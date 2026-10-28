@@ -226,7 +226,9 @@ class ElevenLabsClient:
                 raise ExternalServiceError("ElevenLabs", f"Stream failed: {body.decode()}")
             
             resampler = Downsampler(self._SOURCE_RATE)
-            async for chunk in response.aiter_bytes(chunk_size=4096):
+            # Pass through provider chunks immediately; a fixed chunk_size
+            # makes httpx accumulate audio before our PCM framer can see it.
+            async for chunk in response.aiter_bytes():
                 if chunk:
                     out = resampler.process(chunk)
                     if out:

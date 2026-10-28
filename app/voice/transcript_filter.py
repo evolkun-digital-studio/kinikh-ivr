@@ -97,6 +97,12 @@ _TRAILING_CONNECTORS = frozenset(
     }
 )
 _MIN_COMPLETE_WORDS = 3
+_COMPLETE_SHORT_REPLIES = frozenset({
+    "yes", "yeah", "yes please", "no", "no thanks", "no thank you", "okay", "ok",
+    "sure", "haan", "han", "haan ji", "haanji", "ji", "jee", "nahi", "nahin",
+    "theek hai", "thik hai", "हाँ", "हां", "हाँ जी", "हां जी", "जी", "नहीं", "नही",
+    "ठीक है", "अच्छा",
+})
 
 
 def classify_turn_end(transcript: str) -> tuple[str, str]:
@@ -113,6 +119,8 @@ def classify_turn_end(transcript: str) -> tuple[str, str]:
     last = _normalise(words[-1]).strip("।॥ ") if words else ""
     if last in _TRAILING_CONNECTORS:
         return "wait_unfinished", f"trailing_connector:{last}"
+    if _normalise(text) in _COMPLETE_SHORT_REPLIES:
+        return "reply", "complete_short_answer"
     if len(words) < _MIN_COMPLETE_WORDS:
         return "wait_unfinished", "too_short"
     return "reply", "complete"

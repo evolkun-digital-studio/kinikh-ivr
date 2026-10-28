@@ -1107,14 +1107,24 @@ class SpeechHandler:
         if decision == "wait_unfinished" and self._continuation_merges >= _MAX_CONTINUATION_MERGES:
             decision, reason = "reply", "max_continuations"
         if decision == "wait_unfinished" and extra > 0:
+            # STT already gave the caller time to continue. Measure the grace
+            # from end-of-speech detection, rather than adding it after STT.
+            speech_end = response.metrics.speech_end
+            if speech_end is not None:
+                extra = max(0.0, extra - max(0.0, TurnMetrics.now() - speech_end))
             logger.info(
                 f"[TURN_END] decision=wait_unfinished reason={reason} words={words} "
                 f"call_sid={self._call_sid}"
             )
-            response.awaiting_continuation = True
-            await asyncio.sleep(extra)
-            response.awaiting_continuation = False
-            reason = "no_continuation"
+            if extra > 0:
+                response.awaiting_continuation = True
+                try:
+                    await asyncio.sleep(extra)
+                finally:
+                    response.awaiting_continuation = False
+                reason = "no_continuation"
+            else:
+                reason = "continuation_grace_elapsed"
         logger.info(
             f"[TURN_END] decision=reply reason={reason} words={words} call_sid={self._call_sid}"
         )
@@ -1401,8 +1411,8 @@ class SpeechHandler:
     async def _synthesize(
         self, text: str, lang: str, voice_profile: str | None = None
     ) -> AsyncIterator[bytes]:
-        """Yield exact 200 ms PCM16 frames for `text`, with a tiny fade at
-        the segment's edges so sentence boundaries never click."""
+        """Yield 3200-byte PCM16 frames, meeting Exotel's minimum chunk size,
+        with tiny edge fades so sentence boundaries never click."""
         pending = bytearray()
         first = True
         # Only passed when a curated speech-style voice applies, so neutral

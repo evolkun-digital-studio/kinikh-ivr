@@ -165,7 +165,7 @@ class OpenAIClient:
                 f"chat:{m}",
                 lambda: self._raw.chat.completions.create(**kwargs),
             )
-            if reasoning_effort:
+            if "reasoning_effort" in kwargs:
                 _reasoning_effort_supported[m] = True
         except openai.APIStatusError as exc:
             if "reasoning_effort" not in kwargs or exc.status_code != 400:
@@ -235,7 +235,7 @@ class OpenAIClient:
             stream_kwargs["reasoning_effort"] = reasoning_effort
         try:
             stream = await self._raw.chat.completions.create(**stream_kwargs)
-            if reasoning_effort:
+            if "reasoning_effort" in stream_kwargs:
                 _reasoning_effort_supported[m] = True
         except openai.APIStatusError as exc:
             if "reasoning_effort" not in stream_kwargs or exc.status_code != 400:

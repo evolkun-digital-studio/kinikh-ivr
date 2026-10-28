@@ -66,6 +66,9 @@ class Settings(BaseSettings):
     # OpenAI
     openai_api_key: str = Field(..., description="OpenAI API key")
     openai_model: str = "gpt-4o"
+    # Live receptionist replies can use a faster model independently of
+    # post-call lead extraction/summaries. Empty inherits OPENAI_MODEL.
+    openai_live_model: str = ""
     openai_realtime_model: str = "gpt-4o-realtime-preview"
     openai_temperature: float = 0.2
     openai_max_tokens: int = 1024

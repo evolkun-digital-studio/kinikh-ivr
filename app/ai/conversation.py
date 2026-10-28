@@ -153,6 +153,17 @@ class ConversationEngine:
         self.last_first_token_at: float | None = None
         self.last_history_messages = 0
 
+    @staticmethod
+    def _live_options() -> dict[str, Any]:
+        settings = get_settings()
+        model = settings.openai_live_model or settings.openai_model
+        options: dict[str, Any] = {"model": model}
+        # GPT-4.x/4o are non-reasoning models. Avoid a rejected request and
+        # retry on the latency-sensitive path.
+        if not model.startswith(("gpt-4.", "gpt-4o")):
+            options["reasoning_effort"] = settings.openai_reasoning_effort
+        return options
+
     async def _build_system_prompt(
         self, context: CallContext, text: str = "", rag_context: str | None = None
     ) -> str:
@@ -221,7 +232,7 @@ class ConversationEngine:
                 chunks: list[str] = []
                 try:
                     async for chunk in self._client.stream_chat(
-                        messages, reasoning_effort=get_settings().openai_reasoning_effort
+                        messages, **self._live_options()
                     ):
                         if self.last_first_token_at is None:
                             self.last_first_token_at = time.monotonic()
@@ -242,7 +253,7 @@ class ConversationEngine:
                 reply = "".join(chunks).strip()
                 if not reply:
                     reply = await self._client.chat(
-                        messages, reasoning_effort=get_settings().openai_reasoning_effort
+                        messages, **self._live_options()
                     )
             else:
                 reply = await self._client.chat(messages)
@@ -338,7 +349,7 @@ class ConversationEngine:
                     async with aclosing(
                         self._client.stream_chat(
                             messages,
-                            reasoning_effort=get_settings().openai_reasoning_effort,
+                            **self._live_options(),
                         )
                     ) as stream:
                         async for chunk in stream:
@@ -362,7 +373,7 @@ class ConversationEngine:
         async with asyncio.timeout(first_token_timeout):
             if isinstance(self._client, OpenAIClient):
                 reply = await self._client.chat(
-                    messages, reasoning_effort=get_settings().openai_reasoning_effort
+                    messages, **self._live_options()
                 )
             else:
                 # Injected/test clients may expose only the minimal protocol.

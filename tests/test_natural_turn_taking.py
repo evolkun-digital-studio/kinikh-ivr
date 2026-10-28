@@ -55,7 +55,7 @@ def turn_logs():
         ("मुझे घर बनवाना है और।", "wait_unfinished"),
         ("Haan, toh,", "wait_unfinished"),
         ("I was thinking that, um", "wait_unfinished"),
-        ("Yes.", "wait_unfinished"),
+        ("Yes.", "reply"),
         ("Okay so...", "wait_unfinished"),
         ("Hello?", "reply"),
         ("Matlab?", "reply"),

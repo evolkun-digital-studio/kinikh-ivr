@@ -23,7 +23,9 @@ from app.voice.turn_metrics import TurnMetrics
 
 
 @pytest.mark.asyncio
-async def test_live_llm_uses_summary_rag_last_eight_and_minimal_reasoning():
+async def test_live_llm_uses_summary_rag_last_eight_and_minimal_reasoning(monkeypatch):
+    monkeypatch.setattr(get_settings(), "openai_live_model", "")
+    monkeypatch.setattr(get_settings(), "openai_model", "gpt-5-test")
     captured: dict = {}
 
     async def stream_chat(messages, **kwargs):
