@@ -1,0 +1,66 @@
+# =============================================================================
+# Keep secrets, VCS history, and dev-only bulk out of the build context —
+# `COPY . .` in docker/Dockerfile would otherwise bake all of this into the
+# image layers.
+# =============================================================================
+
+# Environment / secrets
+.env
+.env.*
+!.env.example
+dashboard/.env
+dashboard/.env.*
+!dashboard/.env.example
+*.pem
+*.key
+*.crt
+*.p12
+docker/certs/
+
+# Version control
+.git/
+.github/
+
+# Python virtualenv / bytecode
+venv/
+.venv/
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.egg-info/
+.eggs/
+dist/
+build/
+
+# Testing & coverage
+.pytest_cache/
+.coverage
+coverage.xml
+htmlcov/
+coverage/
+.tox/
+bandit-report.json
+tests/
+
+# Lint/format caches
+.ruff_cache/
+
+# IDE / OS
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Logs
+logs/
+*.log
+
+# Docs (not needed at runtime)
+docs/
+
+# Node (if any frontend tooling)
+node_modules/

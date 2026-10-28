@@ -1,0 +1,36 @@
+# Runtime dependencies — pinned for reproducibility.
+# Generated from pyproject.toml [project.dependencies].
+# To upgrade: pip-compile pyproject.toml
+
+fastapi==0.128.8
+uvicorn[standard]==0.34.3
+starlette==0.49.3
+pydantic==2.13.4
+pydantic-settings==2.11.0
+pydantic[email]==2.13.4
+python-multipart==0.0.20
+SQLAlchemy==2.0.51
+greenlet==3.5.6
+asyncpg==0.30.0
+psycopg2-binary==2.9.12
+alembic==1.16.5
+redis==5.2.1
+openai==2.44.0
+elevenlabs==2.54.0
+exotel==0.1.5
+httpx==0.28.1
+certifi==2026.6.17
+loguru==0.7.3
+python-jose[cryptography]==3.5.0
+passlib[bcrypt]==1.7.4
+# Pinned <4.1: passlib 1.7.4's bcrypt backend probes `bcrypt.__about__`, which
+# bcrypt>=4.1 removed — that crashes hash_password()/verify_password() on
+# every call. See https://github.com/pyca/bcrypt/issues/684.
+bcrypt==4.0.1
+Jinja2==3.1.6
+aiofiles==25.1.0
+python-dotenv==1.2.1
+email-validator==2.3.0
+websockets==15.0.1
+numpy>=1.26,<3
+requests==2.32.5

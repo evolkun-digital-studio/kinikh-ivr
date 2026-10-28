@@ -1,0 +1,1 @@
+"""Externalized prompt templates."""

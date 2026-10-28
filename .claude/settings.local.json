@@ -1,0 +1,25 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(docker --version)",
+      "Bash(docker-compose --version)",
+      "Bash(python3.12 --version)",
+      "Bash(python3.11 --version)",
+      "Read(//usr/local/bin/**)",
+      "Bash(chmod +x *)",
+      "Bash(bash scripts/test.sh)",
+      "Bash(python3 -c \"from app.tenants.routing_rules import *; print\\(dir\\(\\)\\)\")",
+      "Bash(python -m ruff check app/ai/conversation_state.py app/ai/prompt_manager.py app/ai/language_detector.py app/ai/lead_extractor.py app/ai/department_classifier.py app/ai/summary_generator.py app/ai/conversation.py app/ai/__init__.py app/prompts/system.py)",
+      "Bash(python -m black app/ai/conversation.py app/ai/department_classifier.py)",
+      "Bash(python -m ruff check app/ai/ app/prompts/system.py)",
+      "Bash(python -m black --check app/ai/ app/prompts/system.py)",
+      "Bash(python -m ruff check app/telephony/exotel/stream.py app/voice/speech_handler.py app/api/v1/telephony.py)",
+      "Bash(python -m black --check app/telephony/exotel/stream.py app/voice/speech_handler.py app/api/v1/telephony.py)",
+      "Bash(python -m black app/voice/speech_handler.py)",
+      "Bash(python -m pytest tests/test_pipeline.py -v)",
+      "Bash(python -m pytest --tb=short)",
+      "Bash(python -m ruff check app/)",
+      "Bash(python -m black --check app/)"
+    ]
+  }
+}

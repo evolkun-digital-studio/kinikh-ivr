@@ -1,0 +1,71 @@
+# =============================================================================
+# Local development compose — hot-reload, exposed ports, no Nginx.
+# Usage: docker compose -f docker/docker-compose.dev.yml up
+# =============================================================================
+
+services:
+
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: kinikh
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: kinikh_ivr
+    ports:
+      - "5432:5432"
+    volumes:
+      - dev_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U kinikh -d kinikh_ivr"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - dev_redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  app:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+      target: builder        # Use builder stage so we have gcc etc.
+    restart: unless-stopped
+    env_file:
+      - ../.env
+    environment:
+      APP_ENV: development
+      APP_DEBUG: "true"
+      DATABASE_URL: postgresql+asyncpg://kinikh:password@db:5432/kinikh_ivr
+      REDIS_URL: redis://redis:6379/0
+    command: >
+      uvicorn app.main:app
+      --host 0.0.0.0
+      --port 8000
+      --reload
+      --reload-dir /app/app
+      --log-level debug
+    ports:
+      - "8000:8000"
+    volumes:
+      - ..:/app                  # live-reload: mount entire project
+      - /app/venv                # keep container venv separate
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+volumes:
+  dev_postgres_data:
+  dev_redis_data:

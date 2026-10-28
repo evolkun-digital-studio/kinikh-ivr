@@ -1,0 +1,489 @@
+........................................................................ [  9%]
+........................................................................ [ 18%]
+........................................................................ [ 28%]
+........................................................................ [ 37%]
+........................................................................ [ 46%]
+........................................................................ [ 56%]
+...................................FFF.F....F..F........F.FFFFF......... [ 65%]
+........................................................................ [ 75%]
+........................................................................ [ 84%]
+........................................................................ [ 93%]
+..................................F.FF.....F...                          [100%]
+================================== FAILURES ===================================
+__ TestSpeechHandlerPipeline.test_mark_stopped_cancels_pending_silence_timer __
+tests\test_pipeline.py:799: in test_mark_stopped_cancels_pending_silence_timer
+    assert silence_task is not None and not silence_task.done()
+E   assert (None is not None)
+---------------------------- Captured stderr call -----------------------------
+2026-10-01 14:11:22.887 | INFO     | app.core.call_logging:log_call_event:37 - {"event": "call.session.started", "call_sid": "CA_STOP3", "from_number": "+91*00"}
+2026-10-01 14:11:22.887 | INFO     | app.core.call_logging:log_call_event:37 - {"event": "ai.session.started", "call_sid": "CA_STOP3", "department_count": 0}
+2026-10-01 14:11:22.888 | INFO     | app.core.call_logging:log_call_event:37 - {"event": "voice.request", "operation": "tts", "call_sid": "CA_STOP3", "text_length": 49}
+2026-10-01 14:11:22.888 | INFO     | app.voice.speech_handler:_set_turn_state:1228 - [TURN] call_sid=CA_STOP3 state=GREETING
+2026-10-01 14:11:23.101 | INFO     | app.core.call_logging:log_call_event:37 - {"event": "voice.latency.breakdown", "call_sid": "CA_STOP3", "turn_id": 0, "kind": "greeting", "outcome": "completed", "merged_segments": 1, "tts_startup_ms": 0.5, "audio_queue_ms": -0.2, "segment_id": 0}
+2026-10-01 14:11:23.101 | INFO     | app.core.call_logging:log_call_event:37 - {"event": "voice.turn.metrics", "call_sid": "CA_STOP3", "turn_id": 0, "kind": "greeting", "outcome": "completed", "merged_segments": 1, "vad_ms": null, "stt_ms": null, "knowledge_ms": null, "llm_ttft_ms": null, "phrase_buffer_ms": null, "tts_startup_ms": 0.5, "audio_queue_ms": -0.2, "end_of_turn_to_first_audio_ms": null, "complete_turn_ms": null, "end_of_turn_to_stt_final_ms": null, "stt_final_to_llm_first_token_ms": null, "llm_first_token_to_first_audio_ms": null, "segment_id": 0}
+2026-10-01 14:11:23.101 | INFO     | app.voice.speech_handler:_set_turn_state:1228 - [TURN] call_sid=CA_STOP3 state=LISTENING
+2026-10-01 14:11:23.102 | DEBUG    | app.voice.audio_stream:push:162 - [INBOUND_AUDIO] call_sid=CA_STOP3 stream_sid=None bytes=4000 speech_active=False
+-------------------------- Captured stderr teardown ---------------------------
+2026-10-01 14:11:23.691 | INFO     | app.voice.speech_handler:mark_stopped:357 - [VOICE] stop received call_sid=CA_STOP3
+2026-10-01 14:11:23.691 | INFO     | app.voice.speech_handler:_set_turn_state:1228 - [TURN] call_sid=CA_STOP3 state=ENDED
+2026-10-01 14:11:23.691 | INFO     | app.core.call_logging:log_call_event:37 - {"event": "call.session.stopped", "call_sid": "CA_STOP3", "cancelled_tasks": 2}
+____ TestSpeechHandlerPipeline.test_mark_stopped_cancels_in_progress_turn _____
+C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.13_3.13.3824.0_x64__qbz5n2kfra8p0\Lib\asyncio\tasks.py:507: in wait_for
+    return await fut
+           ^^^^^^^^^
+C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.13_3.13.3824.0_x64__qbz5n2kfra8p0\Lib\asyncio\locks.py:213: in wait
+    await fut
+E   asyncio.exceptions.CancelledError
+
+The above exception was the direct cause of the following exception:
+tests\test_pipeline.py:836: in test_mark_stopped_cancels_in_progress_turn
+    await asyncio.wait_for(stt_started.wait(), timeout=1)
+C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.13_3.13.3824.0_x64__qbz5n2kfra8p0\Lib\asyncio\tasks.py:506: in wait_for
+    async with timeouts.timeout(timeout):
+               ^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.13_3.13.3824.0_x64__qbz5n2kfra8p0\Lib\asyncio\timeouts.py:117: in __aexit__
+    raise TimeoutError from exc_val
+E   TimeoutError
+---------------------------- Captured stderr call -----------------------------
+2026-10-01 14:11:23.698 | INFO     | app.core.call_logging:log_call_event:37 - {"event": "call.session.started", "call_sid": "CA_STOP5", "from_number": "+91*00"}
+2026-10-01 14:11:23.698 | INFO     | app.core.call_logging:log_call_event:37 - {"event": "ai.session.started", "call_sid": "CA_STOP5", "department_count": 0}
+2026-10-01 14:11:23.699 | INFO     | app.core.call_logging:log_call_event:37 - {"event": "voice.request", "operation": "tts", "call_sid": "CA_STOP5", "text_length": 49}
+2026-10-01 14:11:23.699 | INFO     | app.voice.speech_handler:_set_turn_state:1228 - [TURN] call_sid=CA_STOP5 state=GREETING
+2026-10-01 14:11:23.913 | INFO     | app.core.call_logging:log_call_event:37 - {"event": "voice.latency.breakdown", "call_sid": "CA_STOP5", "turn_id": 0, "kind": "greeting", "outcome": "completed", "merged_segments": 1, "tts_startup_ms": 0.5, "audio_queue_ms": -0.2, "segment_id": 0}
+2026-10-01 14:11:23.913 | INFO     | app.core.call_logging:log_call_event:37 - {"event": "voice.turn.metrics", "call_sid": "CA_STOP5", "turn_id": 0, "kind": "greeting", "outcome": "completed", "merged_segments": 1, "vad_ms": null, "stt_ms": null, "knowledge_ms": null, "llm_ttft_ms": null, "phrase_buffer_ms": null, "tts_startup_ms": 0.5, "audio_queue_ms": -0.2, "end_of_turn_to_first_audio_ms": null, "complete_turn_ms": null, "end_of_turn_to_stt_final_ms": null, "stt_final_to_llm_first_token_ms": null, "llm_first_token_to_first_audio_ms": null, "segment_id": 0}
+2026-10-01 14:11:23.913 | INFO     | app.voice.speech_handler:_set_turn_state:1228 - [TURN] call_sid=CA_STOP5 state=LISTENING
+2026-10-01 14:11:23.914 | DEBUG    | app.voice.audio_stream:push:162 - [INBOUND_AUDIO] call_sid=CA_STOP5 stream_sid=None bytes=16800 speech_active=False
+-------------------------- Captured stderr teardown ---------------------------
+2026-10-01 14:11:24.988 | INFO     | app.voice.speech_handler:mark_stopped:357 - [VOICE] stop received call_sid=CA_STOP5
+2026-10-01 14:11:24.988 | INFO     | app.voice.speech_handler:_set_turn_state:1228 - [TURN] call_sid=CA_STOP5 state=ENDED
+2026-10-01 14:11:24.988 | INFO     | app.core.call_logging:log_call_event:37 - {"event": "call.session.stopped", "call_sid": "CA_STOP5", "cancelled_tasks": 2}
+_ TestSpeechHandlerPipeline.test_mark_stopped_cancels_the_actually_running_turn_not_just_the_latest _
+C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.13_3.13.3824.0_x64__qbz5n2kfra8p0\Lib\asyncio\tasks.py:507: in wait_for
+    return await fut
+           ^^^^^^^^^
+C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.13_3.13.3824.0_x64__qbz5n2kfra8p0\Lib\asyncio\locks.py:213: in wait
+    await fut
+E   asyncio.exceptions.CancelledError
+
+The above exception was the direct cause of the following exception:
+tests\test_pipeline.py:881: in test_mark_stopped_cancels_the_actually_running_turn_not_just_the_latest
+    await asyncio.wait_for(stt_started.wait(), timeout=1)
+C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.13_3.13.3824.0_x64__qbz5n2kfra8p0\Lib\asyncio\tasks.py:506: in wait_for
+    async with timeouts.timeout(timeout):
+               ^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.13_3.13.3824.0_x64__qbz5n2kfra8p0\Lib\asyncio\timeouts.py:117: in __aexit__
+    raise TimeoutError from exc_val
+E   TimeoutError
+---------------------------- Captured stderr call -----------------------------
+2026-10-01 14:11:24.995 | INFO     | app.core.call_logging:log_call_event:37 - {"event": "call.session.started", "call_sid": "CA_STOP6", "from_number": "+91*00"}
+2026-10-01 14:11:24.995 | INFO     | app.core.call_logging:log_call_event:37 - {"event": "ai.session.started", "call_sid": "CA_STOP6", "department_count": 0}
+2026-10-01 14:11:24.996 | INFO     | app.core.call_logging:log_call_event:37 - {"event": "voice.request", "operation": "tts", "call_sid": "CA_STOP6", "text_length": 49}
+2026-10-01 14:11:24.996 | INFO     | app.voice.speech_handler:_set_turn_state:1228 - [TURN] call_sid=CA_STOP6 state=GREETING
+2026-10-01 14:11:25.211 | INFO     | app.core.call_logging:log_call_event:37 - {"event": "voice.latency.breakdown", "call_sid": "CA_STOP6", "turn_id": 0, "kind": "greeting", "outcome": "completed", "merged_segments": 1, "tts_startup_ms": 0.6, "audio_queue_ms": -0.2, "segment_id": 0}
+2026-10-01 14:11:25.211 | INFO     | app.core.call_logging:log_call_event:37 - {"event": "voice.turn.metrics", "call_sid": "CA_STOP6", "turn_id": 0, "kind": "greeting", "outcome": "completed", "merged_segments": 1, "vad_ms": null, "stt_ms": null, "knowledge_ms": null, "llm_ttft_ms": null, "phrase_buffer_ms": null, "tts_startup_ms": 0.6, "audio_queue_ms": -0.2, "end_of_turn_to_first_audio_ms": null, "complete_turn_ms": null, "end_of_turn_to_stt_final_ms": null, "stt_final_to_llm_first_token_ms": null, "llm_first_token_to_first_audio_ms": null, "segment_id": 0}
+2026-10-01 14:11:25.211 | INFO     | app.voice.speech_handler:_set_turn_state:1228 - [TURN] call_sid=CA_STOP6 state=LISTENING
+2026-10-01 14:11:25.213 | DEBUG    | app.voice.audio_stream:push:162 - [INBOUND_AUDIO] call_sid=CA_STOP6 stream_sid=None bytes=16800 speech_active=False
+-------------------------- Captured stderr teardown ---------------------------
+2026-10-01 14:11:26.279 | INFO     | app.voice.speech_handler:mark_stopped:357 - [VOICE] stop received call_sid=CA_STOP6
+2026-10-01 14:11:26.279 | INFO     | app.voice.speech_handler:_set_turn_state:1228 - [TURN] call_sid=CA_STOP6 state=ENDED
+2026-10-01 14:11:26.279 | INFO     | app.core.call_logging:log_call_event:37 - {"event": "call.session.stopped", "call_sid": "CA_STOP6", "cancelled_tasks": 2}
+_ TestSpeechHandlerPipeline.test_no_duplicate_openai_request_for_overlapping_flushes _
+tests\test_pipeline.py:968: in test_no_duplicate_openai_request_for_overlapping_flushes
+    mock_voice.transcribe.assert_called_once()
+C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.13_3.13.3824.0_x64__qbz5n2kfra8p0\Lib\unittest\mock.py:958: in assert_called_once
+    raise AssertionError(msg)
+E   AssertionError: Expected 'transcribe' to have been called once. Called 0 times.
+---------------------------- Captured stderr call -----------------------------
+2026-10-01 14:11:26.499 | INFO     | app.core.call_logging:log_call_event:37 - {"event": "call.session.started", "call_sid": "CA_NODUP", "from_number": "+91*00"}
+2026-10-01 14:11:26.500 | INFO     | app.core.call_logging:log_call_event:37 - {"event": "ai.session.started", "call_sid": "CA_NODUP", "department_count": 0}
+2026-10-01 14:11:26.500 | INFO     | app.core.call_logging:log_call_event:37 - {"event": "voice.request", "operation": "tts", "call_sid": "CA_NODUP", "text_length": 49}
+2026-10-01 14:11:26.500 | INFO     | app.voice.speech_handler:_set_turn_state:1228 - [TURN] call_sid=CA_NODUP state=GREETING
+2026-10-01 14:11:26.707 | INFO     | app.core.call_logging:log_call_event:37 - {"event": "voice.latency.breakdown", "call_sid": "CA_NODUP", "turn_id": 0, "kind": "greeting", "outcome": "completed", "merged_segments": 1, "tts_startup_ms": 0.6, "audio_queue_ms": -0.2, "segment_id": 0}
+2026-10-01 14:11:26.708 | INFO     | app.core.call_logging:log_call_event:37 - {"event": "voice.turn.metrics", "call_sid": "CA_NODUP", "turn_id": 0, "kind": "greeting", "outcome": "completed", "merged_segments": 1, "vad_ms": null, "stt_ms": null, "knowledge_ms": null, "llm_ttft_ms": null, "phrase_buffer_ms": null, "tts_startup_ms": 0.6, "audio_queue_ms": -0.2, "end_of_turn_to_first_audio_ms": null, "complete_turn_ms": null, "end_of_turn_to_stt_final_ms": null, "stt_final_to_llm_first_token_ms": null, "llm_first_token_to_first_audio_ms": null, "segment_id": 0}
+2026-10-01 14:11:26.708 | INFO     | app.voice.speech_handler:_set_turn_state:1228 - [TURN] call_sid=CA_NODUP state=LISTENING
+2026-10-01 14:11:26.709 | DEBUG    | app.voice.audio_stream:push:162 - [INBOUND_AUDIO] call_sid=CA_NODUP stream_sid=None bytes=16800 speech_active=False
+2026-10-01 14:11:26.709 | INFO     | app.voice.audio_stream:_flush:270 - [VOICE] flush scheduled call_sid=CA_NODUP
+-------------------------- Captured stderr teardown ---------------------------
+2026-10-01 14:11:26.787 | INFO     | app.voice.speech_handler:mark_stopped:357 - [VOICE] stop received call_sid=CA_NODUP
+2026-10-01 14:11:26.787 | INFO     | app.voice.speech_handler:_set_turn_state:1228 - [TURN] call_sid=CA_NODUP state=ENDED
+2026-10-01 14:11:26.787 | INFO     | app.core.call_logging:log_call_event:37 - {"event": "call.session.stopped", "call_sid": "CA_NODUP", "cancelled_tasks": 2}
+_ TestVoiceActivityGate.test_debug_audio_enabled_saves_exact_wav_sent_to_stt __
+tests\test_pipeline.py:1157: in test_debug_audio_enabled_saves_exact_wav_sent_to_stt
+    assert len(saved) == 1
+E   assert 0 == 1
+E    +  where 0 = len([])
+---------------------------- Captured stderr call -----------------------------
+2026-10-01 14:11:27.886 | INFO     | app.core.call_logging:log_call_event:37 - {"event": "call.session.started", "call_sid": "CA_DEBUG_ON", "from_number": "+91*00"}
+2026-10-01 14:11:27.887 | INFO     | app.core.call_logging:log_call_event:37 - {"event": "ai.session.started", "call_sid": "CA_DEBUG_ON", "department_count": 0}
+2026-10-01 14:11:27.887 | INFO     | app.core.call_logging:log_call_event:37 - {"event": "voice.request", "operation": "tts", "call_sid": "CA_DEBUG_ON", "text_length": 49}
+2026-10-01 14:11:27.887 | INFO     | app.voice.speech_handler:_set_turn_state:1228 - [TURN] call_sid=CA_DEBUG_ON state=GREETING
+2026-10-01 14:11:28.092 | INFO     | app.core.call_logging:log_call_event:37 - {"event": "voice.latency.breakdown", "call_sid": "CA_DEBUG_ON", "turn_id": 0, "kind": "greeting", "outcome": "completed", "merged_segments": 1, "tts_startup_ms": 0.5, "audio_queue_ms": -0.2, "segment_id": 0}
+2026-10-01 14:11:28.092 | INFO     | app.core.call_logging:log_call_event:37 - {"event": "voice.turn.metrics", "call_sid": "CA_DEBUG_ON", "turn_id": 0, "kind": "greeting", "outcome": "completed", "merged_segments": 1, "vad_ms": null, "stt_ms": null, "knowledge_ms": null, "llm_ttft_ms": null, "phrase_buffer_ms": null, "tts_startup_ms": 0.5, "audio_queue_ms": -0.2, "end_of_turn_to_first_audio_ms": null, "complete_turn_ms": null, "end_of_turn_to_stt_final_ms": null, "stt_final_to_llm_first_token_ms": null, "llm_first_token_to_first_audio_ms": null, "segment_id": 0}
+2026-10-01 14:11:28.093 | INFO     | app.voice.speech_handler:_set_turn_state:1228 - [TURN] call_sid=CA_DEBUG_ON state=LISTENING
+2026-10-01 14:11:28.095 | DEBUG    | app.voice.audio_stream:push:162 - [INBOUND_AUDIO] call_sid=CA_DEBUG_ON stream_sid=None bytes=16800 speech_active=False
+-------------------------- Captured stderr teardown ---------------------------
+2026-10-01 14:11:28.138 | INFO     | app.voice.speech_handler:mark_stopped:357 - [VOICE] stop received call_sid=CA_DEBUG_ON
+2026-10-01 14:11:28.139 | INFO     | app.voice.speech_handler:_set_turn_state:1228 - [TURN] call_sid=CA_DEBUG_ON state=ENDED
+2026-10-01 14:11:28.139 | INFO     | app.core.call_logging:log_call_event:37 - {"event": "call.session.stopped", "call_sid": "CA_DEBUG_ON", "cancelled_tasks": 2}
+___________ TestVoiceActivityGate.test_genuine_speech_triggers_stt ____________
+tests\test_pipeline.py:1206: in test_genuine_speech_triggers_stt
+    mock_voice.transcribe.assert_called_once()
+C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.13_3.13.3824.0_x64__qbz5n2kfra8p0\Lib\unittest\mock.py:958: in assert_called_once
+    raise AssertionError(msg)
+E   AssertionError: Expected 'transcribe' to have been called once. Called 0 times.
+---------------------------- Captured stderr call -----------------------------
+2026-10-01 14:11:28.587 | INFO     | app.core.call_logging:log_call_event:37 - {"event": "call.session.started", "call_sid": "CA_VAD", "from_number": "+91*00"}
+2026-10-01 14:11:28.587 | INFO     | app.core.call_logging:log_call_event:37 - {"event": "ai.session.started", "call_sid": "CA_VAD", "department_count": 0}
+2026-10-01 14:11:28.588 | INFO     | app.core.call_logging:log_call_event:37 - {"event": "voice.request", "operation": "tts", "call_sid": "CA_VAD", "text_length": 49}
+2026-10-01 14:11:28.588 | INFO     | app.voice.speech_handler:_set_turn_state:1228 - [TURN] call_sid=CA_VAD state=GREETING
+2026-10-01 14:11:28.792 | INFO     | app.core.call_logging:log_call_event:37 - {"event": "voice.latency.breakdown", "call_sid": "CA_VAD", "turn_id": 0, "kind": "greeting", "outcome": "completed", "merged_segments": 1, "tts_startup_ms": 0.5, "audio_queue_ms": -0.2, "segment_id": 0}
+2026-10-01 14:11:28.793 | INFO     | app.core.call_logging:log_call_event:37 - {"event": "voice.turn.metrics", "call_sid": "CA_VAD", "turn_id": 0, "kind": "greeting", "outcome": "completed", "merged_segments": 1, "vad_ms": null, "stt_ms": null, "knowledge_ms": null, "llm_ttft_ms": null, "phrase_buffer_ms": null, "tts_startup_ms": 0.5, "audio_queue_ms": -0.2, "end_of_turn_to_first_audio_ms": null, "complete_turn_ms": null, "end_of_turn_to_stt_final_ms": null, "stt_final_to_llm_first_token_ms": null, "llm_first_token_to_first_audio_ms": null, "segment_id": 0}
+2026-10-01 14:11:28.793 | INFO     | app.voice.speech_handler:_set_turn_state:1228 - [TURN] call_sid=CA_VAD state=LISTENING
+2026-10-01 14:11:28.794 | DEBUG    | app.voice.audio_stream:push:162 - [INBOUND_AUDIO] call_sid=CA_VAD stream_sid=None bytes=4000 speech_active=False
+2026-10-01 14:11:28.794 | INFO     | app.voice.audio_stream:_flush:270 - [VOICE] flush scheduled call_sid=CA_VAD
+-------------------------- Captured stderr teardown ---------------------------
+2026-10-01 14:11:28.859 | INFO     | app.voice.speech_handler:mark_stopped:357 - [VOICE] stop received call_sid=CA_VAD
+2026-10-01 14:11:28.859 | INFO     | app.voice.speech_handler:_set_turn_state:1228 - [TURN] call_sid=CA_VAD state=ENDED
+2026-10-01 14:11:28.859 | INFO     | app.core.call_logging:log_call_event:37 - {"event": "call.session.stopped", "call_sid": "CA_VAD", "cancelled_tasks": 2}
+_ TestVoiceActivityGate.test_stale_playback_audio_cleared_after_tts_finishes_normally _
+tests\test_pipeline.py:1464: in test_stale_playback_audio_cleared_after_tts_finishes_normally
+    mock_voice.transcribe.assert_called_once()
+C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.13_3.13.3824.0_x64__qbz5n2kfra8p0\Lib\unittest\mock.py:958: in assert_called_once
+    raise AssertionError(msg)
+E   AssertionError: Expected 'transcribe' to have been called once. Called 0 times.
+---------------------------- Captured stderr call -----------------------------
+2026-10-01 14:11:33.940 | INFO     | app.core.call_logging:log_call_event:37 - {"event": "call.session.started", "call_sid": "CA_VAD", "from_number": "+91*00"}
+2026-10-01 14:11:33.941 | INFO     | app.core.call_logging:log_call_event:37 - {"event": "ai.session.started", "call_sid": "CA_VAD", "department_count": 0}
+2026-10-01 14:11:33.941 | INFO     | app.core.call_logging:log_call_event:37 - {"event": "voice.request", "operation": "tts", "call_sid": "CA_VAD", "text_length": 49}
+2026-10-01 14:11:33.942 | INFO     | app.voice.speech_handler:_set_turn_state:1228 - [TURN] call_sid=CA_VAD state=GREETING
+2026-10-01 14:11:34.150 | INFO     | app.core.call_logging:log_call_event:37 - {"event": "voice.latency.breakdown", "call_sid": "CA_VAD", "turn_id": 0, "kind": "greeting", "outcome": "completed", "merged_segments": 1, "tts_startup_ms": 0.7, "audio_queue_ms": -0.2, "segment_id": 0}
+2026-10-01 14:11:34.150 | INFO     | app.core.call_logging:log_call_event:37 - {"event": "voice.turn.metrics", "call_sid": "CA_VAD", "turn_id": 0, "kind": "greeting", "outcome": "completed", "merged_segments": 1, "vad_ms": null, "stt_ms": null, "knowledge_ms": null, "llm_ttft_ms": null, "phrase_buffer_ms": null, "tts_startup_ms": 0.7, "audio_queue_ms": -0.2, "end_of_turn_to_first_audio_ms": null, "complete_turn_ms": null, "end_of_turn_to_stt_final_ms": null, "stt_final_to_llm_first_token_ms": null, "llm_first_token_to_first_audio_ms": null, "segment_id": 0}
+2026-10-01 14:11:34.150 | INFO     | app.voice.speech_handler:_set_turn_state:1228 - [TURN] call_sid=CA_VAD state=LISTENING
+2026-10-01 14:11:34.150 | INFO     | app.core.call_logging:log_call_event:37 - {"event": "voice.request", "operation": "tts", "call_sid": "CA_VAD", "text_length": 9}
+2026-10-01 14:11:34.151 | DEBUG    | app.voice.audio_stream:push:162 - [INBOUND_AUDIO] call_sid=CA_VAD stream_sid=None bytes=320 speech_active=False
+2026-10-01 14:11:34.151 | DEBUG    | app.voice.audio_stream:push:162 - [INBOUND_AUDIO] call_sid=CA_VAD stream_sid=None bytes=320 speech_active=False
+2026-10-01 14:11:34.151 | DEBUG    | app.voice.audio_stream:push:162 - [INBOUND_AUDIO] call_sid=CA_VAD stream_sid=None bytes=320 speech_active=False
+2026-10-01 14:11:34.151 | DEBUG    | app.voice.audio_stream:push:162 - [INBOUND_AUDIO] call_sid=CA_VAD stream_sid=None bytes=320 speech_active=False
+2026-10-01 14:11:34.151 | DEBUG    | app.voice.audio_stream:push:162 - [INBOUND_AUDIO] call_sid=CA_VAD stream_sid=None bytes=320 speech_active=False
+2026-10-01 14:11:34.151 | DEBUG    | app.voice.audio_stream:push:162 - [INBOUND_AUDIO] call_sid=CA_VAD stream_sid=None bytes=320 speech_active=False
+2026-10-01 14:11:34.151 | DEBUG    | app.voice.audio_stream:push:162 - [INBOUND_AUDIO] call_sid=CA_VAD stream_sid=None bytes=320 speech_active=False
+2026-10-01 14:11:34.151 | DEBUG    | app.voice.audio_stream:push:162 - [INBOUND_AUDIO] call_sid=CA_VAD stream_sid=None bytes=320 speech_active=False
+2026-10-01 14:11:34.151 | DEBUG    | app.voice.audio_stream:push:162 - [INBOUND_AUDIO] call_sid=CA_VAD stream_sid=None bytes=320 speech_active=False
+2026-10-01 14:11:34.151 | DEBUG    | app.voice.audio_stream:push:162 - [INBOUND_AUDIO] call_sid=CA_VAD stream_sid=None bytes=320 speech_active=False
+2026-10-01 14:11:34.151 | INFO     | app.voice.speech_handler:_set_turn_state:1228 - [TURN] call_sid=CA_VAD state=TTS_PLAYING
+2026-10-01 14:11:34.365 | INFO     | app.core.call_logging:log_call_event:37 - {"event": "voice.latency.breakdown", "call_sid": "CA_VAD", "turn_id": 1, "kind": "utterance", "outcome": "completed", "merged_segments": 1, "tts_startup_ms": 1.0, "audio_queue_ms": -0.0, "segment_id": 0}
+2026-10-01 14:11:34.366 | INFO     | app.core.call_logging:log_call_event:37 - {"event": "voice.turn.metrics", "call_sid": "CA_VAD", "turn_id": 1, "kind": "utterance", "outcome": "completed", "merged_segments": 1, "vad_ms": null, "stt_ms": null, "knowledge_ms": null, "llm_ttft_ms": null, "phrase_buffer_ms": null, "tts_startup_ms": 1.0, "audio_queue_ms": -0.0, "end_of_turn_to_first_audio_ms": null, "complete_turn_ms": null, "end_of_turn_to_stt_final_ms": null, "stt_final_to_llm_first_token_ms": null, "llm_first_token_to_first_audio_ms": null, "segment_id": 0}
+2026-10-01 14:11:34.366 | INFO     | app.voice.speech_handler:_set_turn_state:1228 - [TURN] call_sid=CA_VAD state=LISTENING
+2026-10-01 14:11:34.367 | DEBUG    | app.voice.audio_stream:push:162 - [INBOUND_AUDIO] call_sid=CA_VAD stream_sid=None bytes=4000 speech_active=False
+2026-10-01 14:11:34.367 | INFO     | app.voice.audio_stream:_flush:270 - [VOICE] flush scheduled call_sid=CA_VAD
+-------------------------- Captured stderr teardown ---------------------------
+2026-10-01 14:11:34.430 | INFO     | app.voice.speech_handler:mark_stopped:357 - [VOICE] stop received call_sid=CA_VAD
+2026-10-01 14:11:34.430 | INFO     | app.voice.speech_handler:_set_turn_state:1228 - [TURN] call_sid=CA_VAD state=ENDED
+2026-10-01 14:11:34.430 | INFO     | app.core.call_logging:log_call_event:37 - {"event": "call.session.stopped", "call_sid": "CA_VAD", "cancelled_tasks": 2}
+_ TestVoiceActivityGate.test_two_caller_utterances_produce_exactly_two_ai_responses _
+tests\test_pipeline.py:1519: in test_two_caller_utterances_produce_exactly_two_ai_responses
+    assert len(user_messages) == 2
+E   assert 0 == 2
+E    +  where 0 = len([])
+---------------------------- Captured stderr call -----------------------------
+2026-10-01 14:11:34.653 | INFO     | app.core.call_logging:log_call_event:37 - {"event": "call.session.started", "call_sid": "CA_TWO_TURNS", "from_number": "+91*00"}
+2026-10-01 14:11:34.654 | INFO     | app.core.call_logging:log_call_event:37 - {"event": "ai.session.started", "call_sid": "CA_TWO_TURNS", "department_count": 0}
+2026-10-01 14:11:34.654 | INFO     | app.core.call_logging:log_call_event:37 - {"event": "voice.request", "operation": "tts", "call_sid": "CA_TWO_TURNS", "text_length": 49}
+2026-10-01 14:11:34.654 | INFO     | app.voice.speech_handler:_set_turn_state:1228 - [TURN] call_sid=CA_TWO_TURNS state=GREETING
+2026-10-01 14:11:34.865 | INFO     | app.core.call_logging:log_call_event:37 - {"event": "voice.latency.breakdown", "call_sid": "CA_TWO_TURNS", "turn_id": 0, "kind": "greeting", "outcome": "completed", "merged_segments": 1, "tts_startup_ms": 0.5, "audio_queue_ms": -0.2, "segment_id": 0}
+2026-10-01 14:11:34.865 | INFO     | app.core.call_logging:log_call_event:37 - {"event": "voice.turn.metrics", "call_sid": "CA_TWO_TURNS", "turn_id": 0, "kind": "greeting", "outcome": "completed", "merged_segments": 1, "vad_ms": null, "stt_ms": null, "knowledge_ms": null, "llm_ttft_ms": null, "phrase_buffer_ms": null, "tts_startup_ms": 0.5, "audio_queue_ms": -0.2, "end_of_turn_to_first_audio_ms": null, "complete_turn_ms": null, "end_of_turn_to_stt_final_ms": null, "stt_final_to_llm_first_token_ms": null, "llm_first_token_to_first_audio_ms": null, "segment_id": 0}
+2026-10-01 14:11:34.865 | INFO     | app.voice.speech_handler:_set_turn_state:1228 - [TURN] call_sid=CA_TWO_TURNS state=LISTENING
+2026-10-01 14:11:34.866 | DEBUG    | app.voice.audio_stream:push:162 - [INBOUND_AUDIO] call_sid=CA_TWO_TURNS stream_sid=None bytes=16800 speech_active=False
+2026-10-01 14:11:34.882 | DEBUG    | app.voice.audio_stream:push:162 - [INBOUND_AUDIO] call_sid=CA_TWO_TURNS stream_sid=None bytes=16800 speech_active=False
+-------------------------- Captured stderr teardown ---------------------------
+2026-10-01 14:11:34.924 | INFO     | app.voice.speech_handler:mark_stopped:357 - [VOICE] stop received call_sid=CA_TWO_TURNS
+2026-10-01 14:11:34.924 | INFO     | app.voice.speech_handler:_set_turn_state:1228 - [TURN] call_sid=CA_TWO_TURNS state=ENDED
+2026-10-01 14:11:34.924 | INFO     | app.core.call_logging:log_call_event:37 - {"event": "call.session.stopped", "call_sid": "CA_TWO_TURNS", "cancelled_tasks": 2}
+_______ TestVoiceActivityGate.test_stop_during_openai_prevents_late_tts _______
+C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.13_3.13.3824.0_x64__qbz5n2kfra8p0\Lib\asyncio\tasks.py:507: in wait_for
+    return await fut
+           ^^^^^^^^^
+C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.13_3.13.3824.0_x64__qbz5n2kfra8p0\Lib\asyncio\locks.py:213: in wait
+    await fut
+E   asyncio.exceptions.CancelledError
+
+The above exception was the direct cause of the following exception:
+tests\test_pipeline.py:1545: in test_stop_during_openai_prevents_late_tts
+    await asyncio.wait_for(ai_call_started.wait(), timeout=1)
+C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.13_3.13.3824.0_x64__qbz5n2kfra8p0\Lib\asyncio\tasks.py:506: in wait_for
+    async with timeouts.timeout(timeout):
+               ^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.13_3.13.3824.0_x64__qbz5n2kfra8p0\Lib\asyncio\timeouts.py:117: in __aexit__
+    raise TimeoutError from exc_val
+E   TimeoutError
+---------------------------- Captured stderr call -----------------------------
+2026-10-01 14:11:34.934 | INFO     | app.core.call_logging:log_call_event:37 - {"event": "call.session.started", "call_sid": "CA_STOP_OPENAI", "from_number": "+91*00"}
+2026-10-01 14:11:34.934 | INFO     | app.core.call_logging:log_call_event:37 - {"event": "ai.session.started", "call_sid": "CA_STOP_OPENAI", "department_count": 0}
+2026-10-01 14:11:34.935 | INFO     | app.core.call_logging:log_call_event:37 - {"event": "voice.request", "operation": "tts", "call_sid": "CA_STOP_OPENAI", "text_length": 49}
+2026-10-01 14:11:34.935 | INFO     | app.voice.speech_handler:_set_turn_state:1228 - [TURN] call_sid=CA_STOP_OPENAI state=GREETING
+2026-10-01 14:11:35.148 | INFO     | app.core.call_logging:log_call_event:37 - {"event": "voice.latency.breakdown", "call_sid": "CA_STOP_OPENAI", "turn_id": 0, "kind": "greeting", "outcome": "completed", "merged_segments": 1, "tts_startup_ms": 0.8, "audio_queue_ms": -0.3, "segment_id": 0}
+2026-10-01 14:11:35.149 | INFO     | app.core.call_logging:log_call_event:37 - {"event": "voice.turn.metrics", "call_sid": "CA_STOP_OPENAI", "turn_id": 0, "kind": "greeting", "outcome": "completed", "merged_segments": 1, "vad_ms": null, "stt_ms": null, "knowledge_ms": null, "llm_ttft_ms": null, "phrase_buffer_ms": null, "tts_startup_ms": 0.8, "audio_queue_ms": -0.3, "end_of_turn_to_first_audio_ms": null, "complete_turn_ms": null, "end_of_turn_to_stt_final_ms": null, "stt_final_to_llm_first_token_ms": null, "llm_first_token_to_first_audio_ms": null, "segment_id": 0}
+2026-10-01 14:11:35.149 | INFO     | app.voice.speech_handler:_set_turn_state:1228 - [TURN] call_sid=CA_STOP_OPENAI state=LISTENING
+2026-10-01 14:11:35.150 | DEBUG    | app.voice.audio_stream:push:162 - [INBOUND_AUDIO] call_sid=CA_STOP_OPENAI stream_sid=None bytes=16800 speech_active=False
+-------------------------- Captured stderr teardown ---------------------------
+2026-10-01 14:11:36.212 | INFO     | app.voice.speech_handler:mark_stopped:357 - [VOICE] stop received call_sid=CA_STOP_OPENAI
+2026-10-01 14:11:36.212 | INFO     | app.voice.speech_handler:_set_turn_state:1228 - [TURN] call_sid=CA_STOP_OPENAI state=ENDED
+2026-10-01 14:11:36.213 | INFO     | app.core.call_logging:log_call_event:37 - {"event": "call.session.stopped", "call_sid": "CA_STOP_OPENAI", "cancelled_tasks": 2}
+_ TestVoiceActivityGate.test_stale_turn_result_never_speaks_after_newer_turn_begins _
+C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.13_3.13.3824.0_x64__qbz5n2kfra8p0\Lib\asyncio\tasks.py:507: in wait_for
+    return await fut
+           ^^^^^^^^^
+C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.13_3.13.3824.0_x64__qbz5n2kfra8p0\Lib\asyncio\locks.py:213: in wait
+    await fut
+E   asyncio.exceptions.CancelledError
+
+The above exception was the direct cause of the following exception:
+tests\test_pipeline.py:1576: in test_stale_turn_result_never_speaks_after_newer_turn_begins
+    await asyncio.wait_for(stt_started.wait(), timeout=1)
+C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.13_3.13.3824.0_x64__qbz5n2kfra8p0\Lib\asyncio\tasks.py:506: in wait_for
+    async with timeouts.timeout(timeout):
+               ^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.13_3.13.3824.0_x64__qbz5n2kfra8p0\Lib\asyncio\timeouts.py:117: in __aexit__
+    raise TimeoutError from exc_val
+E   TimeoutError
+---------------------------- Captured stderr call -----------------------------
+2026-10-01 14:11:36.219 | INFO     | app.core.call_logging:log_call_event:37 - {"event": "call.session.started", "call_sid": "CA_STALE_TURN", "from_number": "+91*00"}
+2026-10-01 14:11:36.219 | INFO     | app.core.call_logging:log_call_event:37 - {"event": "ai.session.started", "call_sid": "CA_STALE_TURN", "department_count": 0}
+2026-10-01 14:11:36.220 | INFO     | app.core.call_logging:log_call_event:37 - {"event": "voice.request", "operation": "tts", "call_sid": "CA_STALE_TURN", "text_length": 49}
+2026-10-01 14:11:36.220 | INFO     | app.voice.speech_handler:_set_turn_state:1228 - [TURN] call_sid=CA_STALE_TURN state=GREETING
+2026-10-01 14:11:36.426 | INFO     | app.core.call_logging:log_call_event:37 - {"event": "voice.latency.breakdown", "call_sid": "CA_STALE_TURN", "turn_id": 0, "kind": "greeting", "outcome": "completed", "merged_segments": 1, "tts_startup_ms": 0.5, "audio_queue_ms": -0.2, "segment_id": 0}
+2026-10-01 14:11:36.426 | INFO     | app.core.call_logging:log_call_event:37 - {"event": "voice.turn.metrics", "call_sid": "CA_STALE_TURN", "turn_id": 0, "kind": "greeting", "outcome": "completed", "merged_segments": 1, "vad_ms": null, "stt_ms": null, "knowledge_ms": null, "llm_ttft_ms": null, "phrase_buffer_ms": null, "tts_startup_ms": 0.5, "audio_queue_ms": -0.2, "end_of_turn_to_first_audio_ms": null, "complete_turn_ms": null, "end_of_turn_to_stt_final_ms": null, "stt_final_to_llm_first_token_ms": null, "llm_first_token_to_first_audio_ms": null, "segment_id": 0}
+2026-10-01 14:11:36.426 | INFO     | app.voice.speech_handler:_set_turn_state:1228 - [TURN] call_sid=CA_STALE_TURN state=LISTENING
+2026-10-01 14:11:36.427 | DEBUG    | app.voice.audio_stream:push:162 - [INBOUND_AUDIO] call_sid=CA_STALE_TURN stream_sid=None bytes=16800 speech_active=False
+-------------------------- Captured stderr teardown ---------------------------
+2026-10-01 14:11:37.503 | INFO     | app.voice.speech_handler:mark_stopped:357 - [VOICE] stop received call_sid=CA_STALE_TURN
+2026-10-01 14:11:37.503 | INFO     | app.voice.speech_handler:_set_turn_state:1228 - [TURN] call_sid=CA_STALE_TURN state=ENDED
+2026-10-01 14:11:37.503 | INFO     | app.core.call_logging:log_call_event:37 - {"event": "call.session.stopped", "call_sid": "CA_STALE_TURN", "cancelled_tasks": 2}
+_ TestVoiceActivityGate.test_turn_counter_increments_and_perf_fields_populated _
+tests\test_pipeline.py:1602: in test_turn_counter_increments_and_perf_fields_populated
+    assert handler._turn_number == 1
+E   assert 0 == 1
+E    +  where 0 = <app.voice.speech_handler.SpeechHandler object at 0x000002A868D5A850>._turn_number
+---------------------------- Captured stderr call -----------------------------
+2026-10-01 14:11:37.510 | INFO     | app.core.call_logging:log_call_event:37 - {"event": "call.session.started", "call_sid": "CA_PERF", "from_number": "+91*00"}
+2026-10-01 14:11:37.510 | INFO     | app.core.call_logging:log_call_event:37 - {"event": "ai.session.started", "call_sid": "CA_PERF", "department_count": 0}
+2026-10-01 14:11:37.511 | INFO     | app.core.call_logging:log_call_event:37 - {"event": "voice.request", "operation": "tts", "call_sid": "CA_PERF", "text_length": 49}
+2026-10-01 14:11:37.511 | INFO     | app.voice.speech_handler:_set_turn_state:1228 - [TURN] call_sid=CA_PERF state=GREETING
+2026-10-01 14:11:37.723 | INFO     | app.core.call_logging:log_call_event:37 - {"event": "voice.latency.breakdown", "call_sid": "CA_PERF", "turn_id": 0, "kind": "greeting", "outcome": "completed", "merged_segments": 1, "tts_startup_ms": 0.5, "audio_queue_ms": -0.2, "segment_id": 0}
+2026-10-01 14:11:37.724 | INFO     | app.core.call_logging:log_call_event:37 - {"event": "voice.turn.metrics", "call_sid": "CA_PERF", "turn_id": 0, "kind": "greeting", "outcome": "completed", "merged_segments": 1, "vad_ms": null, "stt_ms": null, "knowledge_ms": null, "llm_ttft_ms": null, "phrase_buffer_ms": null, "tts_startup_ms": 0.5, "audio_queue_ms": -0.2, "end_of_turn_to_first_audio_ms": null, "complete_turn_ms": null, "end_of_turn_to_stt_final_ms": null, "stt_final_to_llm_first_token_ms": null, "llm_first_token_to_first_audio_ms": null, "segment_id": 0}
+2026-10-01 14:11:37.724 | INFO     | app.voice.speech_handler:_set_turn_state:1228 - [TURN] call_sid=CA_PERF state=LISTENING
+2026-10-01 14:11:37.725 | DEBUG    | app.voice.audio_stream:push:162 - [INBOUND_AUDIO] call_sid=CA_PERF stream_sid=None bytes=16800 speech_active=False
+-------------------------- Captured stderr teardown ---------------------------
+2026-10-01 14:11:37.767 | INFO     | app.voice.speech_handler:mark_stopped:357 - [VOICE] stop received call_sid=CA_PERF
+2026-10-01 14:11:37.768 | INFO     | app.voice.speech_handler:_set_turn_state:1228 - [TURN] call_sid=CA_PERF state=ENDED
+2026-10-01 14:11:37.768 | INFO     | app.core.call_logging:log_call_event:37 - {"event": "call.session.stopped", "call_sid": "CA_PERF", "cancelled_tasks": 2}
+____ TestVoiceActivityGate.test_short_answer_yes_triggers_exactly_one_turn ____
+tests\test_pipeline.py:1620: in test_short_answer_yes_triggers_exactly_one_turn
+    mock_voice.transcribe.assert_called_once()
+C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.13_3.13.3824.0_x64__qbz5n2kfra8p0\Lib\unittest\mock.py:958: in assert_called_once
+    raise AssertionError(msg)
+E   AssertionError: Expected 'transcribe' to have been called once. Called 0 times.
+---------------------------- Captured stderr call -----------------------------
+2026-10-01 14:11:37.775 | INFO     | app.core.call_logging:log_call_event:37 - {"event": "call.session.started", "call_sid": "CA_SHORT_YES", "from_number": "+91*00"}
+2026-10-01 14:11:37.775 | INFO     | app.core.call_logging:log_call_event:37 - {"event": "ai.session.started", "call_sid": "CA_SHORT_YES", "department_count": 0}
+2026-10-01 14:11:37.776 | INFO     | app.core.call_logging:log_call_event:37 - {"event": "voice.request", "operation": "tts", "call_sid": "CA_SHORT_YES", "text_length": 49}
+2026-10-01 14:11:37.776 | INFO     | app.voice.speech_handler:_set_turn_state:1228 - [TURN] call_sid=CA_SHORT_YES state=GREETING
+2026-10-01 14:11:37.991 | INFO     | app.core.call_logging:log_call_event:37 - {"event": "voice.latency.breakdown", "call_sid": "CA_SHORT_YES", "turn_id": 0, "kind": "greeting", "outcome": "completed", "merged_segments": 1, "tts_startup_ms": 0.5, "audio_queue_ms": -0.2, "segment_id": 0}
+2026-10-01 14:11:37.991 | INFO     | app.core.call_logging:log_call_event:37 - {"event": "voice.turn.metrics", "call_sid": "CA_SHORT_YES", "turn_id": 0, "kind": "greeting", "outcome": "completed", "merged_segments": 1, "vad_ms": null, "stt_ms": null, "knowledge_ms": null, "llm_ttft_ms": null, "phrase_buffer_ms": null, "tts_startup_ms": 0.5, "audio_queue_ms": -0.2, "end_of_turn_to_first_audio_ms": null, "complete_turn_ms": null, "end_of_turn_to_stt_final_ms": null, "stt_final_to_llm_first_token_ms": null, "llm_first_token_to_first_audio_ms": null, "segment_id": 0}
+2026-10-01 14:11:37.991 | INFO     | app.voice.speech_handler:_set_turn_state:1228 - [TURN] call_sid=CA_SHORT_YES state=LISTENING
+2026-10-01 14:11:37.992 | DEBUG    | app.voice.audio_stream:push:162 - [INBOUND_AUDIO] call_sid=CA_SHORT_YES stream_sid=None bytes=16800 speech_active=False
+-------------------------- Captured stderr teardown ---------------------------
+2026-10-01 14:11:38.074 | INFO     | app.voice.speech_handler:mark_stopped:357 - [VOICE] stop received call_sid=CA_SHORT_YES
+2026-10-01 14:11:38.075 | INFO     | app.voice.speech_handler:_set_turn_state:1228 - [TURN] call_sid=CA_SHORT_YES state=ENDED
+2026-10-01 14:11:38.075 | INFO     | app.core.call_logging:log_call_event:37 - {"event": "call.session.stopped", "call_sid": "CA_SHORT_YES", "cancelled_tasks": 2}
+__________ test_second_utterance_during_playback_gets_its_own_reply ___________
+tests\test_voice_duplex.py:99: in poll
+    await asyncio.sleep(0.005)
+C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.13_3.13.3824.0_x64__qbz5n2kfra8p0\Lib\asyncio\tasks.py:720: in sleep
+    return await future
+           ^^^^^^^^^^^^
+E   asyncio.exceptions.CancelledError
+
+The above exception was the direct cause of the following exception:
+tests\test_voice_duplex.py:123: in test_second_utterance_during_playback_gets_its_own_reply
+    await _wait_for(lambda: ai.chat.await_count == 2 and handler._turn_state == "LISTENING")
+tests\test_voice_duplex.py:101: in _wait_for
+    await asyncio.wait_for(poll(), timeout)
+C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.13_3.13.3824.0_x64__qbz5n2kfra8p0\Lib\asyncio\tasks.py:506: in wait_for
+    async with timeouts.timeout(timeout):
+               ^^^^^^^^^^^^^^^^^^^^^^^^^
+C:\Program Files\WindowsApps\PythonSoftwareFoundation.Python.3.13_3.13.3824.0_x64__qbz5n2kfra8p0\Lib\asyncio\timeouts.py:117: in __aexit__
+    raise TimeoutError from exc_val
+E   TimeoutError
+---------------------------- Captured stderr call -----------------------------
+2026-10-01 14:11:43.739 | INFO     | app.core.call_logging:log_call_event:37 - {"event": "call.session.started", "call_sid": "CA_21e709fce5674820882871f7c17631aa", "from_number": "+91********10"}
+2026-10-01 14:11:43.739 | INFO     | app.core.call_logging:log_call_event:37 - {"event": "ai.session.started", "call_sid": "CA_21e709fce5674820882871f7c17631aa", "department_count": 0}
+2026-10-01 14:11:43.739 | INFO     | app.voice.speech_handler:_ensure_initialized:273 - [VOICE] auto greeting disabled call_sid=CA_21e709fce5674820882871f7c17631aa
+2026-10-01 14:11:43.739 | INFO     | app.voice.speech_handler:_set_turn_state:1228 - [TURN] call_sid=CA_21e709fce5674820882871f7c17631aa state=LISTENING
+2026-10-01 14:11:43.740 | DEBUG    | app.voice.audio_stream:push:162 - [INBOUND_AUDIO] call_sid=CA_21e709fce5674820882871f7c17631aa stream_sid=MZ1 bytes=19200 speech_active=False
+2026-10-01 14:11:43.741 | INFO     | app.voice.audio_stream:push:167 - [VAD] speech_start rms=0.0 call_sid=CA_21e709fce5674820882871f7c17631aa
+2026-10-01 14:11:43.741 | INFO     | app.voice.speech_handler:_set_turn_state:1228 - [TURN] call_sid=CA_21e709fce5674820882871f7c17631aa state=CALLER_SPEAKING
+2026-10-01 14:11:43.741 | INFO     | app.voice.audio_stream:push:172 - [VAD] speech_end duration_ms=1000 call_sid=CA_21e709fce5674820882871f7c17631aa
+2026-10-01 14:11:43.741 | INFO     | app.voice.audio_stream:_flush:270 - [VOICE] flush scheduled call_sid=CA_21e709fce5674820882871f7c17631aa
+2026-10-01 14:11:43.741 | INFO     | app.voice.audio_stream:_flush:282 - [VOICE] turn started call_sid=CA_21e709fce5674820882871f7c17631aa
+2026-10-01 14:11:43.741 | INFO     | app.voice.audio_stream:_log_audio_debug:262 - [AUDIO_DEBUG] call_sid=CA_21e709fce5674820882871f7c17631aa frames=50 pcm_bytes=16000 duration_ms=1000 speech_ms=300 silence_ms=700 active_frames=15 silent_frames=35
+2026-10-01 14:11:43.741 | INFO     | app.voice.audio_stream:_flush:287 - [STT] incoming audio decoded_bytes=16000 wav_bytes=16044 format=pcm_s16le sample_rate=8000 channels=1 sample_width_bytes=2
+2026-10-01 14:11:43.741 | INFO     | app.voice.speech_handler:_on_audio_flushed:702 - [TURN 01] call_sid=CA_21e709fce5674820882871f7c17631aa
+2026-10-01 14:11:43.741 | INFO     | app.voice.speech_handler:_set_turn_state:1228 - [TURN] call_sid=CA_21e709fce5674820882871f7c17631aa state=PROCESSING
+2026-10-01 14:11:43.742 | INFO     | app.core.call_logging:log_call_event:37 - {"event": "voice.stt.final", "call_sid": "CA_21e709fce5674820882871f7c17631aa", "turn_id": 1, "chars": 14, "audio_ms": 1003, "language_hint": "auto"}
+2026-10-01 14:11:43.742 | INFO     | app.voice.speech_handler:_update_language:847 - [LANGUAGE] call_sid=CA_21e709fce5674820882871f7c17631aa language=en locked=False reason=ignored_short
+2026-10-01 14:11:43.742 | INFO     | app.core.call_logging:log_call_event:37 - {"event": "ai.request", "call_sid": "CA_21e709fce5674820882871f7c17631aa", "message_count": 2, "model": "chat"}
+2026-10-01 14:11:43.742 | INFO     | app.core.call_logging:log_call_event:37 - {"event": "voice.metric", "call_sid": "CA_21e709fce5674820882871f7c17631aa", "stage": "llm_first_token", "llm_ttft_ms": 0.0}
+2026-10-01 14:11:43.742 | INFO     | app.core.call_logging:log_call_event:37 - {"event": "voice.request", "operation": "tts", "call_sid": "CA_21e709fce5674820882871f7c17631aa", "text_length": 13}
+2026-10-01 14:11:43.742 | INFO     | app.voice.speech_handler:_set_turn_state:1228 - [TURN] call_sid=CA_21e709fce5674820882871f7c17631aa state=TTS_PLAYING
+2026-10-01 14:11:43.743 | INFO     | app.core.call_logging:log_call_event:37 - {"event": "ai.response", "call_sid": "CA_21e709fce5674820882871f7c17631aa", "status": "ok", "reply_length": 13}
+2026-10-01 14:11:44.544 | INFO     | app.core.call_logging:log_call_event:37 - {"event": "voice.latency.breakdown", "call_sid": "CA_21e709fce5674820882871f7c17631aa", "turn_id": 1, "kind": "caller_turn", "outcome": "completed", "merged_segments": 1, "vad_ms": 0.6, "stt_ms": 0.0, "knowledge_ms": 0.0, "llm_ttft_ms": 0.1, "phrase_buffer_ms": 0.1, "tts_startup_ms": 0.5, "audio_queue_ms": -0.2, "end_of_turn_to_first_audio_ms": 1.6, "complete_turn_ms": 2.2, "end_of_turn_to_stt_final_ms": 0.8, "stt_final_to_llm_first_token_ms": 0.3, "llm_first_token_to_first_audio_ms": 0.5, "segment_id": 1}
+2026-10-01 14:11:44.544 | INFO     | app.core.call_logging:log_call_event:37 - {"event": "voice.turn.metrics", "call_sid": "CA_21e709fce5674820882871f7c17631aa", "turn_id": 1, "kind": "caller_turn", "outcome": "completed", "merged_segments": 1, "vad_ms": 0.6, "stt_ms": 0.0, "knowledge_ms": 0.0, "llm_ttft_ms": 0.1, "phrase_buffer_ms": 0.1, "tts_startup_ms": 0.5, "audio_queue_ms": -0.2, "end_of_turn_to_first_audio_ms": 1.6, "complete_turn_ms": 2.2, "end_of_turn_to_stt_final_ms": 0.8, "stt_final_to_llm_first_token_ms": 0.3, "llm_first_token_to_first_audio_ms": 0.5, "segment_id": 1}
+2026-10-01 14:11:44.544 | INFO     | app.voice.speech_handler:_leave_audible:1100 - [STT_GATE] call_sid=CA_21e709fce5674820882871f7c17631aa decision=not_speech reason=tts_playback packets=1 bytes=21120
+2026-10-01 14:11:44.544 | INFO     | app.voice.speech_handler:_set_turn_state:1228 - [TURN] call_sid=CA_21e709fce5674820882871f7c17631aa state=LISTENING
+2026-10-01 14:11:44.544 | INFO     | app.voice.audio_stream:_flush:295 - [VOICE] turn completed call_sid=CA_21e709fce5674820882871f7c17631aa
+-------------------------- Captured stderr teardown ---------------------------
+2026-10-01 14:11:46.794 | INFO     | app.voice.speech_handler:mark_stopped:357 - [VOICE] stop received call_sid=CA_21e709fce5674820882871f7c17631aa
+2026-10-01 14:11:46.794 | INFO     | app.voice.speech_handler:_set_turn_state:1228 - [TURN] call_sid=CA_21e709fce5674820882871f7c17631aa state=ENDED
+2026-10-01 14:11:46.794 | INFO     | app.core.call_logging:log_call_event:37 - {"event": "call.session.stopped", "call_sid": "CA_21e709fce5674820882871f7c17631aa", "cancelled_tasks": 2}
+___________ test_barge_in_stops_output_and_never_resumes_old_reply ____________
+tests\test_voice_duplex.py:168: in test_barge_in_stops_output_and_never_resumes_old_reply
+    assert handler._turn_state == "CALLER_SPEAKING"
+E   AssertionError: assert <TurnState.TT...'TTS_PLAYING'> == 'CALLER_SPEAKING'
+E     
+E     - CALLER_SPEAKING
+E     + TTS_PLAYING
+---------------------------- Captured stderr call -----------------------------
+2026-10-01 14:11:47.315 | INFO     | app.core.call_logging:log_call_event:37 - {"event": "call.session.started", "call_sid": "CA_079e93bb648c4f529d14d2b610710878", "from_number": "+91********10"}
+2026-10-01 14:11:47.315 | INFO     | app.core.call_logging:log_call_event:37 - {"event": "ai.session.started", "call_sid": "CA_079e93bb648c4f529d14d2b610710878", "department_count": 0}
+2026-10-01 14:11:47.315 | INFO     | app.voice.speech_handler:_ensure_initialized:273 - [VOICE] auto greeting disabled call_sid=CA_079e93bb648c4f529d14d2b610710878
+2026-10-01 14:11:47.315 | INFO     | app.voice.speech_handler:_set_turn_state:1228 - [TURN] call_sid=CA_079e93bb648c4f529d14d2b610710878 state=LISTENING
+2026-10-01 14:11:47.317 | DEBUG    | app.voice.audio_stream:push:162 - [INBOUND_AUDIO] call_sid=CA_079e93bb648c4f529d14d2b610710878 stream_sid=MZ1 bytes=19200 speech_active=False
+2026-10-01 14:11:47.318 | INFO     | app.voice.audio_stream:push:167 - [VAD] speech_start rms=0.0 call_sid=CA_079e93bb648c4f529d14d2b610710878
+2026-10-01 14:11:47.318 | INFO     | app.voice.speech_handler:_set_turn_state:1228 - [TURN] call_sid=CA_079e93bb648c4f529d14d2b610710878 state=CALLER_SPEAKING
+2026-10-01 14:11:47.318 | INFO     | app.voice.audio_stream:push:172 - [VAD] speech_end duration_ms=1000 call_sid=CA_079e93bb648c4f529d14d2b610710878
+2026-10-01 14:11:47.318 | INFO     | app.voice.audio_stream:_flush:270 - [VOICE] flush scheduled call_sid=CA_079e93bb648c4f529d14d2b610710878
+2026-10-01 14:11:47.318 | INFO     | app.voice.audio_stream:_flush:282 - [VOICE] turn started call_sid=CA_079e93bb648c4f529d14d2b610710878
+2026-10-01 14:11:47.319 | INFO     | app.voice.audio_stream:_log_audio_debug:262 - [AUDIO_DEBUG] call_sid=CA_079e93bb648c4f529d14d2b610710878 frames=50 pcm_bytes=16000 duration_ms=1000 speech_ms=300 silence_ms=700 active_frames=15 silent_frames=35
+2026-10-01 14:11:47.319 | INFO     | app.voice.audio_stream:_flush:287 - [STT] incoming audio decoded_bytes=16000 wav_bytes=16044 format=pcm_s16le sample_rate=8000 channels=1 sample_width_bytes=2
+2026-10-01 14:11:47.319 | INFO     | app.voice.speech_handler:_on_audio_flushed:702 - [TURN 01] call_sid=CA_079e93bb648c4f529d14d2b610710878
+2026-10-01 14:11:47.319 | INFO     | app.voice.speech_handler:_set_turn_state:1228 - [TURN] call_sid=CA_079e93bb648c4f529d14d2b610710878 state=PROCESSING
+2026-10-01 14:11:47.319 | INFO     | app.core.call_logging:log_call_event:37 - {"event": "voice.stt.final", "call_sid": "CA_079e93bb648c4f529d14d2b610710878", "turn_id": 1, "chars": 23, "audio_ms": 1003, "language_hint": "auto"}
+2026-10-01 14:11:47.319 | INFO     | app.voice.speech_handler:_lock_language:879 - [LANGUAGE] call_sid=CA_079e93bb648c4f529d14d2b610710878 language=en locked=True reason=first_turn
+2026-10-01 14:11:47.319 | INFO     | app.core.call_logging:log_call_event:37 - {"event": "ai.request", "call_sid": "CA_079e93bb648c4f529d14d2b610710878", "message_count": 2, "model": "chat"}
+2026-10-01 14:11:47.320 | INFO     | app.core.call_logging:log_call_event:37 - {"event": "voice.metric", "call_sid": "CA_079e93bb648c4f529d14d2b610710878", "stage": "llm_first_token", "llm_ttft_ms": 0.1}
+2026-10-01 14:11:47.320 | INFO     | app.core.call_logging:log_call_event:37 - {"event": "voice.request", "operation": "tts", "call_sid": "CA_079e93bb648c4f529d14d2b610710878", "text_length": 51}
+2026-10-01 14:11:47.320 | INFO     | app.voice.speech_handler:_set_turn_state:1228 - [TURN] call_sid=CA_079e93bb648c4f529d14d2b610710878 state=TTS_PLAYING
+-------------------------- Captured stderr teardown ---------------------------
+2026-10-01 14:11:47.347 | INFO     | app.voice.speech_handler:mark_stopped:357 - [VOICE] stop received call_sid=CA_079e93bb648c4f529d14d2b610710878
+2026-10-01 14:11:47.347 | INFO     | app.voice.speech_handler:_set_turn_state:1228 - [TURN] call_sid=CA_079e93bb648c4f529d14d2b610710878 state=ENDED
+2026-10-01 14:11:47.347 | INFO     | app.voice.speech_handler:_leave_audible:1100 - [STT_GATE] call_sid=CA_079e93bb648c4f529d14d2b610710878 decision=not_speech reason=tts_playback packets=1 bytes=6400
+2026-10-01 14:11:47.348 | INFO     | app.core.call_logging:log_call_event:37 - {"event": "voice.latency.breakdown", "call_sid": "CA_079e93bb648c4f529d14d2b610710878", "turn_id": 1, "kind": "caller_turn", "outcome": "stopped", "merged_segments": 1, "vad_ms": 1.1, "stt_ms": 0.1, "knowledge_ms": 0.0, "llm_ttft_ms": 0.2, "phrase_buffer_ms": 0.1, "tts_startup_ms": 0.7, "audio_queue_ms": -0.2, "end_of_turn_to_first_audio_ms": 2.6, "end_of_turn_to_stt_final_ms": 1.4, "stt_final_to_llm_first_token_ms": 0.4, "llm_first_token_to_first_audio_ms": 0.7, "segment_id": 1}
+2026-10-01 14:11:47.348 | INFO     | app.core.call_logging:log_call_event:37 - {"event": "voice.turn.metrics", "call_sid": "CA_079e93bb648c4f529d14d2b610710878", "turn_id": 1, "kind": "caller_turn", "outcome": "stopped", "merged_segments": 1, "vad_ms": 1.1, "stt_ms": 0.1, "knowledge_ms": 0.0, "llm_ttft_ms": 0.2, "phrase_buffer_ms": 0.1, "tts_startup_ms": 0.7, "audio_queue_ms": -0.2, "end_of_turn_to_first_audio_ms": 2.6, "complete_turn_ms": null, "end_of_turn_to_stt_final_ms": 1.4, "stt_final_to_llm_first_token_ms": 0.4, "llm_first_token_to_first_audio_ms": 0.7, "segment_id": 1}
+2026-10-01 14:11:47.348 | INFO     | app.voice.audio_stream:_flush:295 - [VOICE] turn completed call_sid=CA_079e93bb648c4f529d14d2b610710878
+2026-10-01 14:11:47.348 | INFO     | app.core.call_logging:log_call_event:37 - {"event": "call.session.stopped", "call_sid": "CA_079e93bb648c4f529d14d2b610710878", "cancelled_tasks": 2}
+______________ test_stale_llm_tokens_never_play_after_newer_turn ______________
+tests\test_voice_duplex.py:216: in test_stale_llm_tokens_never_play_after_newer_turn
+    assert spoken == [
+E   AssertionError: assert ['Our archite...r be spoken.'] == ['Our archite...ing project.']
+E     
+E     At index 1 diff: 'Also a stale sentence that must never be spoken.' != 'Sure, tell me about the existing project.'
+E     Use -v to get more diff
+---------------------------- Captured stderr call -----------------------------
+2026-10-01 14:11:47.355 | INFO     | app.core.call_logging:log_call_event:37 - {"event": "call.session.started", "call_sid": "CA_12a3d8d9468045dc86a7a519cf8d6d4f", "from_number": "+91********10"}
+2026-10-01 14:11:47.355 | INFO     | app.core.call_logging:log_call_event:37 - {"event": "ai.session.started", "call_sid": "CA_12a3d8d9468045dc86a7a519cf8d6d4f", "department_count": 0}
+2026-10-01 14:11:47.355 | INFO     | app.voice.speech_handler:_ensure_initialized:273 - [VOICE] auto greeting disabled call_sid=CA_12a3d8d9468045dc86a7a519cf8d6d4f
+2026-10-01 14:11:47.355 | INFO     | app.voice.speech_handler:_set_turn_state:1228 - [TURN] call_sid=CA_12a3d8d9468045dc86a7a519cf8d6d4f state=LISTENING
+2026-10-01 14:11:47.356 | DEBUG    | app.voice.audio_stream:push:162 - [INBOUND_AUDIO] call_sid=CA_12a3d8d9468045dc86a7a519cf8d6d4f stream_sid=MZ1 bytes=19200 speech_active=False
+2026-10-01 14:11:47.356 | INFO     | app.voice.audio_stream:push:167 - [VAD] speech_start rms=0.0 call_sid=CA_12a3d8d9468045dc86a7a519cf8d6d4f
+2026-10-01 14:11:47.356 | INFO     | app.voice.speech_handler:_set_turn_state:1228 - [TURN] call_sid=CA_12a3d8d9468045dc86a7a519cf8d6d4f state=CALLER_SPEAKING
+2026-10-01 14:11:47.356 | INFO     | app.voice.audio_stream:push:172 - [VAD] speech_end duration_ms=1000 call_sid=CA_12a3d8d9468045dc86a7a519cf8d6d4f
+2026-10-01 14:11:47.356 | INFO     | app.voice.audio_stream:_flush:270 - [VOICE] flush scheduled call_sid=CA_12a3d8d9468045dc86a7a519cf8d6d4f
+2026-10-01 14:11:47.356 | INFO     | app.voice.audio_stream:_flush:282 - [VOICE] turn started call_sid=CA_12a3d8d9468045dc86a7a519cf8d6d4f
+2026-10-01 14:11:47.357 | INFO     | app.voice.audio_stream:_log_audio_debug:262 - [AUDIO_DEBUG] call_sid=CA_12a3d8d9468045dc86a7a519cf8d6d4f frames=50 pcm_bytes=16000 duration_ms=1000 speech_ms=300 silence_ms=700 active_frames=15 silent_frames=35
+2026-10-01 14:11:47.357 | INFO     | app.voice.audio_stream:_flush:287 - [STT] incoming audio decoded_bytes=16000 wav_bytes=16044 format=pcm_s16le sample_rate=8000 channels=1 sample_width_bytes=2
+2026-10-01 14:11:47.357 | INFO     | app.voice.speech_handler:_on_audio_flushed:702 - [TURN 01] call_sid=CA_12a3d8d9468045dc86a7a519cf8d6d4f
+2026-10-01 14:11:47.357 | INFO     | app.voice.speech_handler:_set_turn_state:1228 - [TURN] call_sid=CA_12a3d8d9468045dc86a7a519cf8d6d4f state=PROCESSING
+2026-10-01 14:11:47.357 | INFO     | app.core.call_logging:log_call_event:37 - {"event": "voice.stt.final", "call_sid": "CA_12a3d8d9468045dc86a7a519cf8d6d4f", "turn_id": 1, "chars": 9, "audio_ms": 1003, "language_hint": "auto"}
+2026-10-01 14:11:47.357 | INFO     | app.voice.speech_handler:_update_language:847 - [LANGUAGE] call_sid=CA_12a3d8d9468045dc86a7a519cf8d6d4f language=en locked=False reason=ignored_short
+2026-10-01 14:11:47.357 | INFO     | app.core.call_logging:log_call_event:37 - {"event": "ai.request", "call_sid": "CA_12a3d8d9468045dc86a7a519cf8d6d4f", "message_count": 2, "model": "chat"}
+2026-10-01 14:11:47.357 | INFO     | app.core.call_logging:log_call_event:37 - {"event": "voice.metric", "call_sid": "CA_12a3d8d9468045dc86a7a519cf8d6d4f", "stage": "llm_first_token", "llm_ttft_ms": 0.0}
+2026-10-01 14:11:47.358 | INFO     | app.core.call_logging:log_call_event:37 - {"event": "voice.request", "operation": "tts", "call_sid": "CA_12a3d8d9468045dc86a7a519cf8d6d4f", "text_length": 40}
+2026-10-01 14:11:47.358 | INFO     | app.voice.speech_handler:_set_turn_state:1228 - [TURN] call_sid=CA_12a3d8d9468045dc86a7a519cf8d6d4f state=TTS_PLAYING
+2026-10-01 14:11:47.585 | INFO     | app.core.call_logging:log_call_event:37 - {"event": "voice.request", "operation": "tts", "call_sid": "CA_12a3d8d9468045dc86a7a519cf8d6d4f", "text_length": 48}
+2026-10-01 14:11:47.586 | INFO     | app.core.call_logging:log_call_event:37 - {"event": "ai.response", "call_sid": "CA_12a3d8d9468045dc86a7a519cf8d6d4f", "status": "ok", "reply_length": 88}
+2026-10-01 14:11:49.174 | INFO     | app.core.call_logging:log_call_event:37 - {"event": "voice.latency.breakdown", "call_sid": "CA_12a3d8d9468045dc86a7a519cf8d6d4f", "turn_id": 1, "kind": "caller_turn", "outcome": "completed", "merged_segments": 1, "vad_ms": 0.6, "stt_ms": 0.0, "knowledge_ms": 0.0, "llm_ttft_ms": 0.1, "phrase_buffer_ms": 0.1, "tts_startup_ms": 0.7, "audio_queue_ms": -0.2, "end_of_turn_to_first_audio_ms": 1.8, "complete_turn_ms": 229.4, "end_of_turn_to_stt_final_ms": 0.8, "stt_final_to_llm_first_token_ms": 0.3, "llm_first_token_to_first_audio_ms": 0.7, "segment_id": 1}
+2026-10-01 14:11:49.174 | INFO     | app.core.call_logging:log_call_event:37 - {"event": "voice.turn.metrics", "call_sid": "CA_12a3d8d9468045dc86a7a519cf8d6d4f", "turn_id": 1, "kind": "caller_turn", "outcome": "completed", "merged_segments": 1, "vad_ms": 0.6, "stt_ms": 0.0, "knowledge_ms": 0.0, "llm_ttft_ms": 0.1, "phrase_buffer_ms": 0.1, "tts_startup_ms": 0.7, "audio_queue_ms": -0.2, "end_of_turn_to_first_audio_ms": 1.8, "complete_turn_ms": 229.4, "end_of_turn_to_stt_final_ms": 0.8, "stt_final_to_llm_first_token_ms": 0.3, "llm_first_token_to_first_audio_ms": 0.7, "segment_id": 1}
+2026-10-01 14:11:49.174 | INFO     | app.voice.speech_handler:_leave_audible:1100 - [STT_GATE] call_sid=CA_12a3d8d9468045dc86a7a519cf8d6d4f decision=not_speech reason=tts_playback packets=1 bytes=20800
+2026-10-01 14:11:49.174 | INFO     | app.voice.speech_handler:_set_turn_state:1228 - [TURN] call_sid=CA_12a3d8d9468045dc86a7a519cf8d6d4f state=LISTENING
+2026-10-01 14:11:49.175 | INFO     | app.voice.audio_stream:_flush:295 - [VOICE] turn completed call_sid=CA_12a3d8d9468045dc86a7a519cf8d6d4f
+-------------------------- Captured stderr teardown ---------------------------
+2026-10-01 14:11:49.293 | INFO     | app.voice.speech_handler:mark_stopped:357 - [VOICE] stop received call_sid=CA_12a3d8d9468045dc86a7a519cf8d6d4f
+2026-10-01 14:11:49.293 | INFO     | app.voice.speech_handler:_set_turn_state:1228 - [TURN] call_sid=CA_12a3d8d9468045dc86a7a519cf8d6d4f state=ENDED
+2026-10-01 14:11:49.293 | INFO     | app.core.call_logging:log_call_event:37 - {"event": "call.session.stopped", "call_sid": "CA_12a3d8d9468045dc86a7a519cf8d6d4f", "cancelled_tasks": 2}
+______ test_greeting_does_not_block_receive_loop_and_can_be_interrupted _______
+tests\test_voice_duplex.py:362: in test_greeting_does_not_block_receive_loop_and_can_be_interrupted
+    assert handler._turn_state == "CALLER_SPEAKING"
+E   AssertionError: assert <TurnState.GR...G: 'GREETING'> == 'CALLER_SPEAKING'
+E     
+E     - CALLER_SPEAKING
+E     + GREETING
+---------------------------- Captured stderr call -----------------------------
+2026-10-01 14:11:50.352 | INFO     | app.core.call_logging:log_call_event:37 - {"event": "call.session.started", "call_sid": "CA_7e821344317240f6a9df506992c3a054", "from_number": "+91********10"}
+2026-10-01 14:11:50.352 | INFO     | app.core.call_logging:log_call_event:37 - {"event": "ai.session.started", "call_sid": "CA_7e821344317240f6a9df506992c3a054", "department_count": 0}
+2026-10-01 14:11:50.352 | INFO     | app.core.call_logging:log_call_event:37 - {"event": "voice.request", "operation": "tts", "call_sid": "CA_7e821344317240f6a9df506992c3a054", "text_length": 49}
+2026-10-01 14:11:50.352 | INFO     | app.voice.speech_handler:_set_turn_state:1228 - [TURN] call_sid=CA_7e821344317240f6a9df506992c3a054 state=GREETING
+-------------------------- Captured stderr teardown ---------------------------
+2026-10-01 14:11:50.371 | INFO     | app.voice.speech_handler:mark_stopped:357 - [VOICE] stop received call_sid=CA_7e821344317240f6a9df506992c3a054
+2026-10-01 14:11:50.371 | INFO     | app.voice.speech_handler:_set_turn_state:1228 - [TURN] call_sid=CA_7e821344317240f6a9df506992c3a054 state=ENDED
+2026-10-01 14:11:50.371 | INFO     | app.voice.speech_handler:_leave_audible:1100 - [STT_GATE] call_sid=CA_7e821344317240f6a9df506992c3a054 decision=not_speech reason=tts_playback packets=1 bytes=6400
+2026-10-01 14:11:50.371 | INFO     | app.core.call_logging:log_call_event:37 - {"event": "voice.latency.breakdown", "call_sid": "CA_7e821344317240f6a9df506992c3a054", "turn_id": 0, "kind": "greeting", "outcome": "stopped", "merged_segments": 1, "tts_startup_ms": 0.5, "audio_queue_ms": -0.2, "segment_id": 0}
+2026-10-01 14:11:50.371 | INFO     | app.core.call_logging:log_call_event:37 - {"event": "voice.turn.metrics", "call_sid": "CA_7e821344317240f6a9df506992c3a054", "turn_id": 0, "kind": "greeting", "outcome": "stopped", "merged_segments": 1, "vad_ms": null, "stt_ms": null, "knowledge_ms": null, "llm_ttft_ms": null, "phrase_buffer_ms": null, "tts_startup_ms": 0.5, "audio_queue_ms": -0.2, "end_of_turn_to_first_audio_ms": null, "complete_turn_ms": null, "end_of_turn_to_stt_final_ms": null, "stt_final_to_llm_first_token_ms": null, "llm_first_token_to_first_audio_ms": null, "segment_id": 0}
+2026-10-01 14:11:50.372 | INFO     | app.core.call_logging:log_call_event:37 - {"event": "call.session.stopped", "call_sid": "CA_7e821344317240f6a9df506992c3a054", "cancelled_tasks": 2}
+============================== warnings summary ===============================
+tests/test_pipeline.py::TestSpeechHandlerPipeline::test_finalize_creates_lead_in_db
+tests/test_pipeline.py::TestSpeechHandlerPipeline::test_finalize_dispatches_email
+tests/test_pipeline.py::TestSpeechHandlerPipeline::test_finalize_email_failure_does_not_crash
+tests/test_pipeline.py::TestSpeechHandlerPipeline::test_finalize_cleans_up_context
+tests/test_pipeline.py::TestSpeechHandlerPipeline::test_finalize_department_classified_by_keyword_when_missing
+tests/test_pipeline.py::TestSpeechHandlerPipeline::test_finalize_marks_call_complete_in_db
+tests/test_pipeline.py::TestFullPipeline::test_complete_english_call
+tests/test_pipeline.py::TestFullPipeline::test_complete_hindi_call
+tests/test_pipeline.py::TestFullPipeline::test_complete_call_with_no_departments
+  C:\Users\assas\Downloads\3\Kinikh IVR\app\voice\speech_handler.py:1376: RuntimeWarning: coroutine 'AsyncMockMixin._execute_mock_call' was never awaited
+    await self._sync_recording(call_sid)
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+tests/test_telephony_webhook_validation.py::TestIncomingWebhookValidation::test_valid_payload_is_accepted
+tests/test_telephony_webhook_validation.py::TestIncomingWebhookValidation::test_dynamic_resolver_returns_url_field_exotel_requires
+tests/test_telephony_webhook_validation.py::TestIncomingWebhookValidation::test_dynamic_resolver_uses_wss_when_request_was_https
+tests/test_telephony_webhook_validation.py::TestIncomingWebhookValidation::test_incoming_webhook_logs_masked_phone_numbers_not_raw
+tests/test_telephony_webhook_validation.py::TestCallServiceIdempotency::test_duplicate_webhook_delivery_does_not_crash
+tests/test_telephony_webhook_validation.py::TestExotelWebhookAuthentication::test_voicebot_get_resolver_with_webhook_token_is_accepted
+tests/test_telephony_webhook_validation.py::TestExotelWebhookAuthentication::test_basic_auth_with_secret_is_accepted_and_wrong_password_rejected
+tests/test_telephony_webhook_validation.py::TestExotelWebhookAuthentication::test_webhook_token_never_reaches_payload_or_logs
+  C:\Users\assas\Downloads\3\Kinikh IVR\app\services\stream_session_service.py:33: RuntimeWarning: coroutine 'AsyncMockMixin._execute_mock_call' was never awaited
+    self.session.add(stream_session)
+  Enable tracemalloc to get traceback where the object was allocated.
+  See https://docs.pytest.org/en/stable/how-to/capture-warnings.html#resource-warnings for more info.
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ===========================
+FAILED tests/test_pipeline.py::TestSpeechHandlerPipeline::test_mark_stopped_cancels_pending_silence_timer
+FAILED tests/test_pipeline.py::TestSpeechHandlerPipeline::test_mark_stopped_cancels_in_progress_turn
+FAILED tests/test_pipeline.py::TestSpeechHandlerPipeline::test_mark_stopped_cancels_the_actually_running_turn_not_just_the_latest
+FAILED tests/test_pipeline.py::TestSpeechHandlerPipeline::test_no_duplicate_openai_request_for_overlapping_flushes
+FAILED tests/test_pipeline.py::TestVoiceActivityGate::test_debug_audio_enabled_saves_exact_wav_sent_to_stt
+FAILED tests/test_pipeline.py::TestVoiceActivityGate::test_genuine_speech_triggers_stt
+FAILED tests/test_pipeline.py::TestVoiceActivityGate::test_stale_playback_audio_cleared_after_tts_finishes_normally
+FAILED tests/test_pipeline.py::TestVoiceActivityGate::test_two_caller_utterances_produce_exactly_two_ai_responses
+FAILED tests/test_pipeline.py::TestVoiceActivityGate::test_stop_during_openai_prevents_late_tts
+FAILED tests/test_pipeline.py::TestVoiceActivityGate::test_stale_turn_result_never_speaks_after_newer_turn_begins
+FAILED tests/test_pipeline.py::TestVoiceActivityGate::test_turn_counter_increments_and_perf_fields_populated
+FAILED tests/test_pipeline.py::TestVoiceActivityGate::test_short_answer_yes_triggers_exactly_one_turn
+FAILED tests/test_voice_duplex.py::test_second_utterance_during_playback_gets_its_own_reply
+FAILED tests/test_voice_duplex.py::test_barge_in_stops_output_and_never_resumes_old_reply
+FAILED tests/test_voice_duplex.py::test_stale_llm_tokens_never_play_after_newer_turn
+FAILED tests/test_voice_duplex.py::test_greeting_does_not_block_receive_loop_and_can_be_interrupted
+16 failed, 751 passed, 17 warnings in 44.69s

@@ -1,0 +1,66 @@
+# Python
+venv/
+.venv/
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+*.so
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Testing & coverage
+.pytest_cache/
+.coverage
+coverage.xml
+htmlcov/
+coverage/
+.tox/
+bandit-report.json
+
+# Logs
+logs/
+*.log
+
+
+# Ruff / Black cache
+.ruff_cache/
+
+# Docker
+docker/*.env
+
+# Secrets / certs
+*.pem
+*.key
+*.crt
+*.p12
+docker/certs/
+
+# Node (if any frontend tooling)
+node_modules/
+
+# Call recording storage (runtime data, never committed)
+storage/
+
+# Optional debug-only audio dump (VOICE_DEBUG_AUDIO=true) — dev diagnostic
+# only, exact caller audio, never committed.
+debug_audio/

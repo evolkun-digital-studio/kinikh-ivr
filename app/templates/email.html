@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>New Lead — {{ lead.name or 'Unknown' }}</title>
+  <style>
+    body { margin: 0; padding: 0; background: #f4f6f9; font-family: 'Segoe UI', Arial, sans-serif; }
+    .wrapper { max-width: 620px; margin: 40px auto; background: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 24px rgba(0,0,0,0.08); }
+    .header { background: linear-gradient(135deg, #1a56db 0%, #0e3fad 100%); padding: 32px 40px; text-align: center; }
+    .header h1 { margin: 0; color: #ffffff; font-size: 22px; font-weight: 700; letter-spacing: 0.5px; }
+    .header p { margin: 6px 0 0; color: rgba(255,255,255,0.8); font-size: 14px; }
+    .badge { display: inline-block; background: rgba(255,255,255,0.2); color: #fff; padding: 4px 14px; border-radius: 20px; font-size: 12px; margin-top: 12px; }
+    .body { padding: 36px 40px; }
+    .section-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.2px; color: #6b7280; margin: 24px 0 12px; border-bottom: 1px solid #e5e7eb; padding-bottom: 8px; }
+    .field-row { display: flex; padding: 10px 0; border-bottom: 1px solid #f3f4f6; }
+    .field-row:last-child { border-bottom: none; }
+    .field-label { width: 140px; font-size: 13px; color: #6b7280; font-weight: 600; flex-shrink: 0; }
+    .field-value { font-size: 13px; color: #111827; word-break: break-word; }
+    .requirement-box { background: #f8fafc; border-left: 4px solid #1a56db; border-radius: 4px; padding: 14px 16px; margin: 16px 0; font-size: 14px; color: #1e293b; line-height: 1.6; }
+    .summary-box { background: #f0fdf4; border-left: 4px solid #16a34a; border-radius: 4px; padding: 14px 16px; margin: 16px 0; font-size: 14px; color: #14532d; line-height: 1.6; }
+    .lang-tag { display: inline-block; background: #e0e7ff; color: #3730a3; font-size: 11px; font-weight: 700; padding: 2px 10px; border-radius: 12px; text-transform: uppercase; }
+    .footer { background: #f9fafb; padding: 20px 40px; text-align: center; border-top: 1px solid #e5e7eb; }
+    .footer p { margin: 0; font-size: 12px; color: #9ca3af; }
+    .cta { display: inline-block; background: #1a56db; color: #ffffff; text-decoration: none; padding: 10px 24px; border-radius: 6px; font-size: 13px; font-weight: 600; margin-top: 20px; }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+    <div class="header">
+      <h1>🎯 New Lead Received</h1>
+      <p>{{ lead.get('department', 'General') }} Department</p>
+      <span class="badge">{{ lead.get('language', 'en') | upper }}</span>
+    </div>
+
+    <div class="body">
+      <div class="section-title">Lead Handover</div>
+      <div class="field-row">
+        <span class="field-label">Call Reference:</span>
+        <span class="field-value">{{ lead.get('reference', 'NO-REF') }}</span>
+      </div>
+      <div class="field-row">
+        <span class="field-label">Caller Name:</span>
+        <span class="field-value">{{ lead.name or 'Unknown' }}</span>
+      </div>
+      <div class="field-row">
+        <span class="field-label">Phone Number:</span>
+        <span class="field-value">{{ lead.phone or 'Unknown' }}</span>
+      </div>
+      <div class="field-row">
+        <span class="field-label">Department/Service:</span>
+        <span class="field-value">{{ lead.get('department', 'General') }}</span>
+      </div>
+      <div class="field-row">
+        <span class="field-label">Key Requirement:</span>
+        <span class="field-value">{{ lead.requirement or 'Not specified' }}</span>
+      </div>
+      <div class="field-row">
+        <span class="field-label">Action Needed:</span>
+        <span class="field-value">{% if lead.get('department') == "Founder's Executive Assistant" %}Meeting Request{% else %}Callback{% endif %}</span>
+      </div>
+      
+      {% if lead.summary %}
+      <div class="section-title">AI Summary</div>
+      <div class="summary-box">{{ lead.summary }}</div>
+      {% endif %}
+
+      {% if lead.additional_notes %}
+      <div class="section-title">Additional Notes</div>
+      <div class="requirement-box" style="border-color:#f59e0b; background:#fffbeb;">{{ lead.additional_notes }}</div>
+      {% endif %}
+
+    </div>
+
+    <div class="footer">
+      <p>This lead was captured automatically by <strong>Kinikh AI Voice Receptionist</strong>.</p>
+      <p style="margin-top:6px;">Please follow up within 2 business hours.</p>
+    </div>
+  </div>
+</body>
+</html>
