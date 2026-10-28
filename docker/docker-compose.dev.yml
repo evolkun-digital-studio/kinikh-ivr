@@ -39,7 +39,7 @@ services:
     build:
       context: ..
       dockerfile: docker/Dockerfile
-      target: builder        # Use builder stage so we have gcc etc.
+      target: runtime
     restart: unless-stopped
     env_file:
       - ../.env
@@ -48,6 +48,7 @@ services:
       APP_DEBUG: "true"
       DATABASE_URL: postgresql+asyncpg://kinikh:password@db:5432/kinikh_ivr
       REDIS_URL: redis://redis:6379/0
+    working_dir: /app
     command: >
       uvicorn app.main:app
       --host 0.0.0.0

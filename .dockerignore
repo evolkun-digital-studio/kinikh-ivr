@@ -64,3 +64,11 @@ docs/
 
 # Node (if any frontend tooling)
 node_modules/
+
+dashboard/node_modules/
+dashboard/dist/
+dashboard/*.tsbuildinfo
+storage/
+debug_audio/
+backups/
+!docker/production.env.example

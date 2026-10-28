@@ -3,7 +3,17 @@
 # Use docker-compose.dev.yml for local development.
 # =============================================================================
 
+name: kinikh-ivr
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
+
 x-common-env: &common-env
+  APP_ENV: production
+  APP_DEBUG: "false"
   DATABASE_URL: postgresql+asyncpg://kinikh:${DB_PASSWORD:?Set DB_PASSWORD}@db:5432/kinikh_ivr
   REDIS_URL: redis://redis:6379/0
 
@@ -13,6 +23,7 @@ services:
   db:
     image: postgres:16-alpine
     restart: unless-stopped
+    logging: *logging
     environment:
       POSTGRES_USER: kinikh
       POSTGRES_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD}
@@ -31,6 +42,7 @@ services:
   redis:
     image: redis:7-alpine
     restart: unless-stopped
+    logging: *logging
     command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
     volumes:
       - redis_data:/data
@@ -44,11 +56,17 @@ services:
 
   # ── FastAPI app ────────────────────────────────────────────────────────────
   app:
+    image: ${IMAGE_REPOSITORY:?Set IMAGE_REPOSITORY}-app:${IMAGE_TAG:-local}
+    init: true
+    stop_grace_period: 130s
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: [ALL]
     build:
       context: ..
       dockerfile: docker/Dockerfile
       target: runtime
     restart: unless-stopped
+    logging: *logging
     env_file:
       - ../.env
     environment:
@@ -61,7 +79,8 @@ services:
       migrate:
         condition: service_completed_successfully
     volumes:
-      - ../logs:/app/logs
+      - app_logs:/app/logs
+      - app_storage:/app/storage
     networks:
       - internal
       - public
@@ -70,6 +89,8 @@ services:
 
   # ── Alembic migrations (init container) ───────────────────────────────────
   migrate:
+    image: ${IMAGE_REPOSITORY:?Set IMAGE_REPOSITORY}-app:${IMAGE_TAG:-local}
+    logging: *logging
     build:
       context: ..
       dockerfile: docker/Dockerfile
@@ -88,17 +109,24 @@ services:
 
   # ── Nginx reverse proxy ────────────────────────────────────────────────────
   nginx:
+    image: ${IMAGE_REPOSITORY:?Set IMAGE_REPOSITORY}-web:${IMAGE_TAG:-local}
     build:
       context: ..
       dockerfile: docker/Dockerfile
       target: web
     restart: unless-stopped
+    logging: *logging
     ports:
       - "80:80"
       - "443:443"
     volumes:
-      - ./nginx.conf:/etc/nginx/nginx.conf:ro
       - ${TLS_CERT_DIR:?Set TLS_CERT_DIR with fullchain.pem and privkey.pem}:/etc/nginx/certs:ro
+      - ${ACME_WEBROOT:-/var/www/certbot}:/var/www/certbot:ro
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1/api/v1/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
     depends_on:
       app:
         condition: service_healthy
@@ -106,6 +134,8 @@ services:
       - public
 
 volumes:
+  app_logs:
+  app_storage:
   postgres_data:
   redis_data:
 

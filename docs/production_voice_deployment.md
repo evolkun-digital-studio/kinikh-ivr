@@ -52,6 +52,9 @@ LLM time-to-first-token, TTS startup and end-of-turn to first-audio latency.
 
 ## Deployment
 
+Follow the [production runbook](../README.md) for server setup, GitHub CI/CD,
+backups and rollback. Use one worker and drain calls before deployment.
+
 Set `DB_PASSWORD` and `TLS_CERT_DIR` before running the production Compose
 file. `TLS_CERT_DIR` must contain `fullchain.pem` and `privkey.pem`. The
 deployment waits for Alembic migrations before starting FastAPI. Nginx serves

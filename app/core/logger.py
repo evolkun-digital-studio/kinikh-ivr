@@ -46,7 +46,7 @@ def configure_logging(app_env: str = "production", debug: bool = False) -> None:
         enqueue=True,
         colorize=False,
         backtrace=True,
-        diagnose=True,
+        diagnose=app_env != "production",
     )
 
 

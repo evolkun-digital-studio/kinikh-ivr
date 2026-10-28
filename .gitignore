@@ -64,3 +64,9 @@ storage/
 # Optional debug-only audio dump (VOICE_DEBUG_AUDIO=true) — dev diagnostic
 # only, exact caller audio, never committed.
 debug_audio/
+
+backups/
+.deploy.lock
+.deployed-release
+.previous-release
+!docker/production.env.example
