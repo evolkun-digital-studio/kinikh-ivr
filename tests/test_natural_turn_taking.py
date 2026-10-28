@@ -197,7 +197,8 @@ async def test_speech_inside_the_grace_window_does_not_interrupt(mock_db_session
     handler, _, clearer = await _handler(voice, ai, mock_db_session)
 
     await handler.handle_audio(_utterance())
-    await _wait_for(lambda: handler._turn_state == "TTS_PLAYING")
+    # The grace window starts when audio is sent, after TTS is committed.
+    await _wait_for(lambda: handler._turn_state == "TTS_PLAYING" and bool(handler._sentence_starts))
     await handler.handle_audio(_tone(400) + _silence(200))  # all inside the 500 ms grace
 
     assert handler._turn_state == "TTS_PLAYING"
@@ -306,4 +307,4 @@ def test_greeting_prompt_asks_for_everyday_hindi_and_short_replies():
     )
     assert "everyday spoken Hindi" in prompt
     assert "हमारी team आपको जल्दी call back करेगी" in prompt
-    assert "Reply in ONE short sentence (two only when truly needed)" in prompt
+    assert "Reply in one or two short sentences, about 25 words at most" in prompt

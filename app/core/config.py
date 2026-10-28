@@ -180,13 +180,26 @@ class Settings(BaseSettings):
     # Content words (excluding acknowledgements like "haan"/"okay") a turn
     # needs before it can set or switch the language.
     language_min_words: int = Field(default=3, ge=1)
-    # Consecutive meaningful turns in a new language before the session
-    # preference moves (the reply itself mirrors a clear switch at once).
-    language_switch_turns: int = Field(default=2, ge=1)
+    # Once the call language is set, a caller turn switches it only with at
+    # least this many content words, this share of them in the other
+    # language, or an explicit request ("Hindi mein baat karo").
+    language_switch_min_words: int = Field(default=4, ge=1)
+    language_switch_ratio: float = Field(default=0.7, gt=0, le=1)
     # Extra comma-separated acknowledgement words/phrases that never change
     # the call language, on top of the built-in list.
     language_extra_acknowledgements: str = ""
-    voice_follows_language: bool = False
+
+    # Text normalization right before TTS (app/voice/tts_text.py):
+    # ";"-separated "from=to" whole-word, case-sensitive replacements,
+    # applied in order. The _HI map is applied first for hi / hi-en speech.
+    tts_pronunciations: str = (
+        "KINIKH=Kinikh;Kinikh=किनिख;evolKun=evol-kun;KRIL=K R I L;"
+        "BrandWorks=Brand Works;Landcraft=Land craft"
+    )
+    tts_pronunciations_hi: str = "Kinikh=किनिख;KINIKH=किनिख"
+    # ALL-CAPS words (4+ letters) are spoken as words, not spelled out,
+    # except these acronyms.
+    tts_keep_acronyms: str = "CRM,ERP,MIS,GST,HR,EA,NGO"
 
     # Speech-style (accent) detection — OPTIONAL, for TTS personalisation
     # only (app/voice/accent_detector.py). Never on the response critical
@@ -233,6 +246,11 @@ class Settings(BaseSettings):
     elevenlabs_voice_id_en: str = ""
     elevenlabs_voice_id_hi: str = ""
     elevenlabs_model_id: str = "eleven_multilingual_v2"
+    # voice_settings: slightly lower stability = more natural intonation.
+    elevenlabs_stability: float = Field(default=0.45, ge=0, le=1)
+    elevenlabs_similarity: float = Field(default=0.8, ge=0, le=1)
+    elevenlabs_style: float = Field(default=0.15, ge=0, le=1)
+    elevenlabs_speed: float = Field(default=1.0, ge=0.7, le=1.2)
     # Optional curated voices per (language, speech style). Empty = not
     # configured; selection falls back to the neutral voice for the language,
     # then to ELEVENLABS_VOICE_ID_EN. Neutral EN/HI default to the IDs above;

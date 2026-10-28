@@ -163,7 +163,7 @@ class TestPromptManager:
         pm = PromptManager()
         result = pm.farewell("hi-en", "Kinikh")
         assert "Kinikh" in result
-        assert "shukriya" in result.lower() or "thank" in result.lower()
+        assert "शुक्रिया" in result or "thank" in result.lower()
 
 
 # ---------------------------------------------------------------------------
@@ -917,7 +917,7 @@ class TestConversationEngine:
         prompt = await engine._build_system_prompt(ctx)
         assert "rural" in prompt
         # Language-specific instruction blocks are NOT appended for English (if not locked)
-        assert "Reply in the language the caller is using." in prompt
+        assert "CALL LANGUAGE: not decided yet." in prompt
 
     @pytest.mark.asyncio
     async def test_build_system_prompt_hi_adds_instruction(self):
@@ -928,7 +928,7 @@ class TestConversationEngine:
         ctx = self._make_context("hi")
         ctx.language_locked = True
         prompt = await engine._build_system_prompt(ctx)
-        assert "Speak in everyday spoken Hindi in Devanagari script" in prompt
+        assert "CALL LANGUAGE: Hindi. Reply only in this language." in prompt
 
     @pytest.mark.asyncio
     async def test_build_system_prompt_hinglish_adds_instruction(self):
@@ -939,7 +939,7 @@ class TestConversationEngine:
         ctx = self._make_context("hi-en")
         ctx.language_locked = True
         prompt = await engine._build_system_prompt(ctx)
-        assert "Speak in natural Hinglish" in prompt
+        assert "CALL LANGUAGE: Hinglish. Reply only in this language." in prompt
 
     @pytest.mark.asyncio
     async def test_build_system_prompt_hi_forbids_translating_to_english(self):
@@ -952,7 +952,7 @@ class TestConversationEngine:
         ctx = self._make_context("hi")
         ctx.language_locked = True
         prompt = await engine._build_system_prompt(ctx)
-        assert "Speak in everyday spoken Hindi in Devanagari script" in prompt
+        assert "CALL LANGUAGE: Hindi. Reply only in this language." in prompt
 
     @pytest.mark.asyncio
     async def test_build_system_prompt_hi_preserves_department_names(self):

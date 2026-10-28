@@ -109,6 +109,15 @@ class ElevenLabsClient:
         settings = get_settings()
         self._api_key = settings.elevenlabs_api_key
         self._model_id = settings.elevenlabs_model_id
+        # Slightly lower stability = more natural intonation; speaker boost
+        # stays off (it adds processing artefacts at 8 kHz).
+        self._voice_settings = {
+            "stability": settings.elevenlabs_stability,
+            "similarity_boost": settings.elevenlabs_similarity,
+            "style": settings.elevenlabs_style,
+            "speed": settings.elevenlabs_speed,
+            "use_speaker_boost": False,
+        }
         default_voice = _setting(settings, "elevenlabs_voice_id_en")
         hindi_voice = _setting(settings, "elevenlabs_voice_id_hi")
         neutral_hi = _setting(settings, "elevenlabs_voice_hi_neutral") or hindi_voice
@@ -174,15 +183,7 @@ class ElevenLabsClient:
         return {
             "text": text,
             "model_id": self._model_id,
-            # Higher stability = steadier, less breathy delivery, which
-            # survives the narrow-band phone line better; speaker boost off
-            # (it adds processing artefacts at 8 kHz).
-            "voice_settings": {
-                "stability": 0.6,
-                "similarity_boost": 0.75,
-                "style": 0.0,
-                "use_speaker_boost": False,
-            },
+            "voice_settings": dict(self._voice_settings),
         }
 
     async def synthesize(

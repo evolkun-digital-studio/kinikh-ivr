@@ -411,7 +411,7 @@ async def test_hello_at_pickup_does_not_cancel_the_greeting(mock_db_session):
     release_tts = asyncio.Event()
 
     async def slow_synthesize(text, lang):
-        if "Welcome to Kinikh Group" in text:  # the greeting: slow, and audibly non-silent
+        if "Welcome to किनिख Group" in text:  # the greeting: slow, and audibly non-silent
             tts_started.set()
             await release_tts.wait()
             return _tone(400, amplitude=1234)

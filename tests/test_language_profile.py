@@ -145,8 +145,8 @@ def test_5_okay_does_not_switch_language():
     # TEST B
     ctx = _ctx()
     assert _turn(ctx, "Mujhe ghar banwana hai.") == HI
-    assert _turn(ctx, "Interior design bhi karte ho?") == HINGLISH
-    assert _turn(ctx, "okay") == HINGLISH
+    assert _turn(ctx, "Interior design bhi karte ho?") == HI
+    assert _turn(ctx, "okay") == HI
 
 
 def test_6_haan_does_not_switch_english_conversation_to_hindi():
@@ -173,14 +173,14 @@ def test_8_full_hindi_turn_during_english_call_gets_hindi_response():
     ctx = _ctx()
     _turn(ctx, "I want to know about architecture.")
     assert _turn(ctx, "मुझे अपना घर बनवाना है, कितना खर्चा आएगा?") == HI
-    assert ctx.language == EN  # one turn: reply mirrors, preference holds
+    assert ctx.language == HI  # Clear Hindi switches the whole reply and call.
 
 
 def test_9_full_english_turn_during_hindi_call_gets_english_response():
     ctx = _ctx()
     _turn(ctx, "मुझे घर बनाना है")
     assert _turn(ctx, "Okay, and approximately how long does the process take?") == EN
-    assert ctx.language == HI
+    assert ctx.language == EN
 
 
 def test_10_hinglish_turn_gets_hinglish_response():
@@ -197,7 +197,7 @@ def test_11_two_consecutive_new_language_turns_update_preference():
     _turn(ctx, "Achha construction ka kya process hai?")
     assert ctx.language == EN
     decision = update_language_profile(ctx, analyze_language("Kitna time lagta hai?"))
-    assert decision.preference_changed and decision.switch_reason == "consecutive_turns_switch"
+    assert decision.preference_changed and decision.switch_reason == "clear_other_language"
     assert ctx.language == HINGLISH
     assert ctx.primary_language == EN  # primary is where the call started
 
@@ -237,14 +237,14 @@ def test_one_very_strong_turn_moves_preference():
             "process is for a full renovation of my house"
         ),
     )
-    assert decision.switch_reason == "strong_turn_switch"
+    assert decision.switch_reason == "clear_other_language"
     assert ctx.language == EN
 
 
 def test_switch_during_call_scenario_c():
     ctx = _ctx()
     assert _turn(ctx, "I want to know about architecture.") == EN
-    assert _turn(ctx, "Achha construction ka kya process hai?") == HINGLISH
+    assert _turn(ctx, "Achha construction ka kya process hai?") == EN
     assert _turn(ctx, "Kitna time lagta hai?") == HINGLISH
     assert _turn(ctx, "Okay, can you explain the next step in English?") == EN
 
@@ -278,9 +278,9 @@ def test_13_explicit_speak_english_overrides_immediately():
     decision = update_language_profile(ctx, analyze_language("Please speak in English."))
     assert decision.response_language == EN and decision.switch_reason == "explicit_request"
     assert ctx.language == EN and ctx.language_explicit
-    # Persists through Hindi turns and acknowledgements.
-    assert _turn(ctx, "Mujhe interior design chahiye ghar ke liye") == EN
+    # Short turns keep the preference; a clear new language can change it.
     assert _turn(ctx, "haan") == EN
+    assert _turn(ctx, "Mujhe interior design chahiye ghar ke liye") == HINGLISH
 
 
 def test_14_explicit_hindi_mein_baat_karo_overrides_immediately():
@@ -288,7 +288,7 @@ def test_14_explicit_hindi_mein_baat_karo_overrides_immediately():
     _turn(ctx, "I want to know about your architecture services.")
     assert _turn(ctx, "Hindi mein baat karo.") == HI
     assert ctx.language == HI
-    assert _turn(ctx, "And what about interior design?") == HI
+    assert _turn(ctx, "And what about interior design?") == EN
 
 
 def test_15_explicit_hinglish_request_works():
@@ -333,7 +333,7 @@ async def test_16_english_rag_context_with_hindi_response_language():
     _turn(ctx, "मुझे बताइए construction services क्या देते हैं आप लोग")
     _turn(ctx, "मुझे घर बनवाना है, कितना खर्चा आएगा?")
     prompt = await _system_prompt(ctx)
-    assert "RESPONSE LANGUAGE: Hindi" in prompt
+    assert "CALL LANGUAGE: Hindi" in prompt
     assert _ENGLISH_FACT in prompt
     assert "Never reply in English just because the facts are in English." in prompt
 
@@ -342,13 +342,12 @@ async def test_16_english_rag_context_with_hindi_response_language():
 async def test_17_english_rag_context_with_hinglish_response_language():
     ctx = _ctx()
     _turn(ctx, "I want to know about your services.")
-    _turn(ctx, "Construction services kya provide karte ho?")
+    _turn(ctx, "Mujhe construction ke baare mein bataiye please")
     prompt = await _system_prompt(ctx)
-    assert "PRIMARY CALL LANGUAGE: English" in prompt
-    assert "CURRENT CALLER TURN LANGUAGE: Hinglish" in prompt
-    assert "RESPONSE LANGUAGE: Hinglish" in prompt
+    assert ctx.primary_language == EN
+    assert "CALL LANGUAGE: Hinglish" in prompt
     assert _ENGLISH_FACT in prompt
-    assert "Speak in natural Hinglish" in prompt
+    assert "Speak natural conversational Hinglish" in prompt
 
 
 @pytest.mark.asyncio
@@ -378,9 +377,8 @@ def test_prompt_before_first_meaningful_turn_has_no_language():
     from app.ai.prompt_manager import PromptManager
 
     prompt = PromptManager().greeting("Kinikh Group", "INFO")
-    assert "PRIMARY CALL LANGUAGE: not known yet" in prompt
-    assert "RESPONSE LANGUAGE: not known yet" in prompt
-    assert "Reply in the language the caller is using." in prompt
+    assert "CALL LANGUAGE: not decided yet" in prompt
+    assert "Reply in the language the caller is using:" in prompt
 
 
 def test_prompt_marks_acknowledgement_turn_as_unclear():
@@ -388,10 +386,10 @@ def test_prompt_marks_acknowledgement_turn_as_unclear():
 
     prompt = PromptManager().greeting(
         "Kinikh Group", "INFO", language=EN, language_locked=True,
-        primary_language=EN, current_turn_language=UNKNOWN, response_language=EN,
+        response_language=EN,
     )
-    assert "CURRENT CALLER TURN LANGUAGE: unclear" in prompt
-    assert "RESPONSE LANGUAGE: English" in prompt
+    assert "CALL LANGUAGE: English. Reply only in this language." in prompt
+    assert "CALL LANGUAGE: English" in prompt
 
 
 # ── Live call path: STT hint, no LLM, logging, latency (19–21) ──────────────
@@ -424,15 +422,14 @@ async def test_19_mixed_language_stt_text_preserved_and_never_language_locked(mo
         assert handler._context.language_locked and handler._context.language == EN
         await handler._on_audio_flushed(_loud_audio())
 
-    # A locked English call still transcribes with auto-detection, never a
-    # forced language that would mangle code-switched speech.
-    for call in voice.transcribe.call_args_list:
-        assert call.args[1] is None
+    # First turn auto-detects; the established English call hints English.
+    assert voice.transcribe.call_args_list[0].args[1] is None
+    assert voice.transcribe.call_args_list[1].args[1] == EN
     user_messages = [m.content for m in handler._context.messages if m.role == "user"]
     assert user_messages[-1] == mixed
-    # The reply to the mixed turn was asked for in Hinglish.
+    # This mixed turn is below the 70% Hindi switch threshold.
     system_prompt = ai.chat.call_args_list[-1].args[0][0]["content"]
-    assert "RESPONSE LANGUAGE: Hinglish" in system_prompt
+    assert "CALL LANGUAGE: English" in system_prompt
     await handler.mark_stopped()
 
 
@@ -491,9 +488,9 @@ def test_language_detected_event_is_structured_and_content_free(mock_db_session)
     assert fields["turn_id"] == 2
     assert fields["detected"] == HINGLISH
     assert fields["previous_preference"] == EN
-    assert fields["response_language"] == HINGLISH
+    assert fields["response_language"] == EN
     assert fields["meaningful"] is True
-    assert fields["switch_reason"] == "clear_current_turn"
+    assert fields["switch_reason"] == "not_clearly_other_language"
     assert isinstance(elapsed, float) and fields["language_ms"] == elapsed
     assert "rahul" not in str(fields).lower()
 

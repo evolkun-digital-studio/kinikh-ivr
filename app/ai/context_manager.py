@@ -29,15 +29,12 @@ class CallContext:
     primary_language: str = "unknown"
     # Language of the latest caller turn ("unknown" for acknowledgements).
     current_turn_language: str = "unknown"
-    # Language the reply to the latest turn uses — may differ from the
-    # preference when the caller switches for a turn.
+    # Language the reply to the latest turn uses — the call language once
+    # set; before that, whatever the latest turn showed.
     response_language: str = "unknown"
     language_confidence: str = "low"
     # True once the caller explicitly asked for a language.
     language_explicit: bool = False
-    # Candidate new preference and how many meaningful turns in a row used it.
-    pending_language: str | None = None
-    consecutive_other_language_turns: int = 0
     voice_language: str | None = None
     # Speech-style profile — SEPARATE from language: it may only influence
     # how the TTS voice sounds (app/voice/accent_detector.py), never what is

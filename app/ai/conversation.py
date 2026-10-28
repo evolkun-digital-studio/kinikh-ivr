@@ -24,7 +24,7 @@ from app.telephony.transfer import is_transfer_available
 
 _FALLBACK_EN = "I'm sorry, I'm having trouble right now. Please call back in a moment."
 _FALLBACK_HI = "Sorry, अभी थोड़ी technical problem आ रही है। Please थोड़ी देर बाद call कीजिए।"
-_FALLBACK_HI_EN = "I'm sorry, abhi kuch technical issue hai. Please thodi der baad call karein."
+_FALLBACK_HI_EN = "Sorry, अभी कुछ technical issue है। Please थोड़ी देर बाद call कीजिए।"
 
 # Flush the first useful clause as soon as its punctuation arrives. Waiting
 # for the next token used to add avoidable phrase-buffer latency.
@@ -56,6 +56,80 @@ def split_speakable(buffer: str) -> tuple[list[str], str]:
             segments.append(candidate)
             start = end
     return segments, buffer[start:].lstrip()
+
+
+# Acknowledgement openers recognised even without punctuation after them
+# ("Haanji main ..."). Longest first so "haan ji" wins over "haan".
+_ACK_OPENERS = tuple(
+    sorted(
+        (
+            "haan ji", "haanji", "haan", "ji haan", "ji", "jee", "okay", "ok", "sure",
+            "great", "certainly", "absolutely", "alright", "right", "achha", "acha",
+            "accha", "bilkul", "perfect", "got it", "हाँ जी", "हां जी", "हाँजी", "हांजी",
+            "जी हाँ", "जी हां", "जी", "अच्छा", "ठीक है", "बिल्कुल",
+        ),
+        key=len,
+        reverse=True,
+    )
+)
+_JI_OPENERS = frozenset(
+    {"ji", "jee", "haanji", "haan ji", "ji haan", "जी", "हाँ जी", "हां जी", "हाँजी", "हांजी",
+     "जी हाँ", "जी हां"}
+)
+# One or two words closed by a comma/full stop/danda/exclamation: "Rahul ji,"
+_WORD = r"[^\s,.!?।;:—–]+"
+_PUNCT_OPENER = re.compile(rf"^\s*({_WORD}(?:\s+{_WORD})?)\s*[,.!।—–]+\s+(?=\S)")
+_OPENER_TAIL = re.compile(r"^[\s,.!।—–]*")
+
+
+def _opener(text: str) -> tuple[str, int] | None:
+    """(normalised opener, index where the rest of the reply starts)."""
+    stripped = text.lstrip()
+    lowered = stripped.lower()
+    offset = len(text) - len(stripped)
+    for phrase in _ACK_OPENERS:
+        if lowered.startswith(phrase):
+            after = lowered[len(phrase) : len(phrase) + 1]
+            if after and (after.isalnum() or "ऀ" <= after <= "ॿ"):
+                continue  # "Rightly", "Okayish" — not this opener
+            end = offset + len(phrase)
+            return phrase, end + _OPENER_TAIL.match(text[end:]).end()
+    match = _PUNCT_OPENER.match(text)
+    if match:
+        return " ".join(match.group(1).lower().split()), match.end()
+    return None
+
+
+def strip_repeated_opener(reply: str, previous_reply: str | None) -> str:
+    """Drop the reply's opening word/phrase if the previous assistant reply
+    opened the same way, or both opened with a "Ji"/"Haanji" — callers hear
+    "Haanji ... Haanji ..." as robotic. Keeps (and re-capitalises) the rest;
+    never empties the reply."""
+    if not reply or not previous_reply:
+        return reply
+    current, previous = _opener(reply), _opener(previous_reply)
+    end = 0
+    if current is not None and previous is not None:
+        same = current[0] == previous[0]
+        both_ji = current[0] in _JI_OPENERS and previous[0] in _JI_OPENERS
+        if same or both_ji:
+            end = current[1]
+    if not end:
+        # Also catch repeated opening words without a comma, such as
+        # "We offer ..." / "We offer ...". Markers are never openers.
+        words = list(re.finditer(_WORD, reply))[:2]
+        old_words = list(re.finditer(_WORD, previous_reply))[:2]
+        for word, old in zip(words, old_words):
+            if "[" in word.group() or word.group().lower() != old.group().lower():
+                break
+            end = word.end()
+        if not end:
+            return reply
+        end += _OPENER_TAIL.match(reply[end:]).end()
+    rest = reply[end:].lstrip()
+    if not rest:
+        return reply
+    return rest[0].upper() + rest[1:]
 
 
 class ConversationEngine:
@@ -91,8 +165,6 @@ class ConversationEngine:
             language=context.language,
             language_locked=context.language_locked,
             transfer_available=is_transfer_available(),
-            primary_language=context.primary_language,
-            current_turn_language=context.current_turn_language,
             response_language=context.response_language,
         )
         if rag_context is None and text:
@@ -102,7 +174,7 @@ class ConversationEngine:
         if rag_context:
             prompt += (
                 f"\n\nCOMPANY KNOWLEDGE:\n{rag_context}\nAnswer questions using these facts, "
-                "in the RESPONSE LANGUAGE."
+                "in the CALL LANGUAGE."
             )
         if context.running_summary:
             prompt += f"\n\nEARLIER CONVERSATION SUMMARY:\n{context.running_summary}"
@@ -223,8 +295,18 @@ class ConversationEngine:
         )
         self.last_first_token_at = None
         yielded_chars = 0
+        previous_reply = next(
+            (m.content for m in reversed(context.messages) if m.role == "assistant"), None
+        )
         try:
             async for segment in self._reply_segments(context, messages, first_token_timeout):
+                if yielded_chars == 0:
+                    guarded = strip_repeated_opener(segment, previous_reply)
+                    if guarded != segment:
+                        log_call_event(
+                            "ai.reply.opener_stripped", call_sid=context.call_sid
+                        )
+                        segment = guarded
                 yielded_chars += len(segment)
                 yield segment
             status = "ok"

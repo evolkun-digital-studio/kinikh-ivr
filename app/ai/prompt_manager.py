@@ -48,39 +48,36 @@ def _caller_id_instruction(caller_number: str) -> str:
     )
 
 
-_RESPONSE_LANGUAGE_DIRECTIVES = {
+_LANGUAGE_DIRECTIVES = {
     "en": (
-        "Reply in conversational spoken English, even if the caller uses a few Hindi words."
+        "Speak conversational spoken English, even if the caller uses a few Hindi words. "
+        "Do not use any Hindi in this reply."
     ),
     "hi": (
-        "Speak in everyday spoken Hindi in Devanagari script, mixed with common English "
-        "words exactly as described below."
+        "Speak everyday spoken Hindi. Write every Hindi word in Devanagari script and keep "
+        "common English words (website, booking, team, construction, project, call, number, "
+        "email) in English letters. Do not switch to English sentences."
     ),
     "hi-en": (
-        "Speak in natural Hinglish (Hindi in Roman letters, mixed with common English "
-        "business words), the way a friendly receptionist in India talks."
+        "Speak natural conversational Hinglish, the relaxed Hindi-English mix people use on "
+        "the phone in India. Write the Hindi words in Devanagari script and the English "
+        "words in English letters, e.g. \"जी, आपकी website के लिए हमारी tech team आपको "
+        "call करेगी।\""
     ),
 }
 _UNKNOWN_LANGUAGE_DIRECTIVE = (
-    "The caller's language is not known yet. Reply in the language the caller is using. "
-    "It may be English, Hindi or Hinglish. If their message gives no clue (just a greeting or "
+    "CALL LANGUAGE: not decided yet. Reply in the language the caller is using: English, "
+    "Hindi or Hinglish. If their message gives no clue (just a greeting or "
     "\"haan\"/\"okay\"), keep the reply short and simple."
 )
 
 
-def _language_label(code: str, *, short_turn: bool = False) -> str:
-    if code in LANGUAGE_NAMES:
-        return LANGUAGE_NAMES[code]
-    return "unclear (short reply or no words yet)" if short_turn else "not known yet"
-
-
-def _language_instruction(primary: str, current_turn: str, response: str) -> str:
-    directive = _RESPONSE_LANGUAGE_DIRECTIVES.get(response, _UNKNOWN_LANGUAGE_DIRECTIVE)
+def _language_instruction(call_language: str) -> str:
+    if call_language not in LANGUAGE_NAMES:
+        return _UNKNOWN_LANGUAGE_DIRECTIVE
     return (
-        f"PRIMARY CALL LANGUAGE: {_language_label(primary)}\n"
-        f"CURRENT CALLER TURN LANGUAGE: {_language_label(current_turn, short_turn=True)}\n"
-        f"RESPONSE LANGUAGE: {_language_label(response)}\n"
-        f"{directive}"
+        f"CALL LANGUAGE: {LANGUAGE_NAMES[call_language]}. Reply only in this language.\n"
+        f"{_LANGUAGE_DIRECTIVES[call_language]}"
     )
 
 
@@ -113,19 +110,11 @@ class PromptManager:
         language: str = "en",
         language_locked: bool = False,
         transfer_available: bool = False,
-        primary_language: str | None = None,
-        current_turn_language: str | None = None,
         response_language: str | None = None,
     ) -> str:
         if response_language not in LANGUAGE_NAMES:
             response_language = language if language_locked else UNKNOWN
-        if primary_language is None:
-            primary_language = language if language_locked else UNKNOWN
-        if current_turn_language is None:
-            current_turn_language = UNKNOWN
-        language_instruction = _language_instruction(
-            primary_language, current_turn_language, response_language
-        )
+        language_instruction = _language_instruction(response_language)
 
         return GREETING_PROMPT.format(
             company_name=company_name,

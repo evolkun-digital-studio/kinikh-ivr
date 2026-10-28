@@ -54,7 +54,13 @@ from app.ai.context_manager import CallContext, context_manager
 from app.ai.conversation import ConversationEngine
 from app.rag.index import get_knowledge_index
 from app.ai.department_classifier import DepartmentClassifier
-from app.ai.language_profile import LANGUAGES, analyze_language, update_language_profile
+from app.ai.language_profile import (
+    ACKNOWLEDGEMENTS,
+    LANGUAGES,
+    NEUTRAL_WORDS,
+    analyze_language,
+    update_language_profile,
+)
 from app.ai.lead_extractor import LeadExtractor
 from app.ai.openai_client import OpenAIClient
 from app.ai.prompt_manager import PromptManager
@@ -74,6 +80,7 @@ from app.voice.pcm import apply_fade, sanitize_pcm16
 from app.voice.turn_metrics import TurnMetrics
 from app.voice.vad import BargeInDetector, BargeInResult, NoiseFloor, extract_wav_pcm_payload
 from app.voice.transcript_filter import classify_turn_end, is_hallucination
+from app.voice.tts_text import normalize_for_tts
 from app.voice.voice_manager import VoiceManager
 
 # The assistant appends this marker to its closing line when the call is
@@ -145,7 +152,16 @@ class _Response:
     # Last reply segment handed to TTS (the one carrying END_CALL, if any).
     last_segment: str | None = None
     reply_audio_ready: asyncio.Event = field(default_factory=asyncio.Event)
+    # Set once the caller's transcript and the call language for this turn
+    # are known and the reply is about to be generated.
+    analyzed: asyncio.Event = field(default_factory=asyncio.Event)
+    reply_generated: asyncio.Event = field(default_factory=asyncio.Event)
+    contains_control: bool = False
     filler_played: bool = False
+    # TTS language for every sentence of this response, fixed at its first.
+    language: str | None = None
+    voice_profile: str | None = None
+    voice_selected: bool = False
 
 
 ResponseRunner = Callable[[_Response], Awaitable[None]]
@@ -153,8 +169,24 @@ ResponseRunner = Callable[[_Response], Awaitable[None]]
 # Greeting audio by (text, language): the greeting never changes, so it is
 # synthesized once per process (prewarmed at startup) and replayed instantly.
 _GREETING_AUDIO_CACHE: dict[tuple[str, str], list[bytes]] = {}
-_FILLER_TEXTS = ("Ji.", "Okay.", "Haan ji.")
+# Short acknowledgements played only while a slow reply is still being
+# prepared (see SpeechHandler._maybe_play_filler). Each at most once a call.
+_FILLER_TEXTS: dict[str, tuple[str, ...]] = {
+    "en": ("Okay.", "Sure.", "Right."),
+    "hi": ("अच्छा।", "ठीक है।", "जी।"),
+    "hi-en": ("अच्छा।", "ठीक है।", "जी।"),
+}
 _FILLER_AUDIO_CACHE: dict[tuple[str, str], list[bytes]] = {}
+_FILLER_DELAY_S = 1.5
+_FILLER_MIN_TURN_GAP = 3
+# Caller turns that close the call or ask for a person: a filler there
+# would come right before a goodbye/transfer line.
+_CLOSING_WORDS = frozenset(
+    "bye goodbye thanks thank shukriya dhanyavad dhanyavaad transfer connect "
+    "धन्यवाद शुक्रिया".split()
+)
+_YES_NO_WORDS = ACKNOWLEDGEMENTS | NEUTRAL_WORDS | frozenset({"hai", "है", "please"})
+_WORD_SPLIT = re.compile(r"[\s,.!?;:।]+")
 
 
 async def prewarm_greeting(language: str = "en") -> None:
@@ -169,7 +201,8 @@ async def prewarm_greeting(language: str = "en") -> None:
         return
     try:
         voice = VoiceManager()
-        pcm = await voice.synthesize(text, language)
+        # Cached under the greeting text, synthesized as the voice should say it.
+        pcm = await voice.synthesize(normalize_for_tts(text, language), language)
         if voice.last_used_fallback:
             # The fallback provider speaks in a different voice; caching it
             # would pin every greeting to that voice for the whole process.
@@ -191,13 +224,13 @@ async def prewarm_greeting(language: str = "en") -> None:
 
 async def prewarm_fillers() -> None:
     """Best-effort startup cache for acknowledgement audio in every voice."""
-    for language in ("en", "hi", "hi-en"):
-        for text in _FILLER_TEXTS:
+    for language, texts in _FILLER_TEXTS.items():
+        for text in texts:
             if (text, language) in _FILLER_AUDIO_CACHE:
                 continue
             try:
                 voice = VoiceManager()
-                pcm = await voice.synthesize(text, language)
+                pcm = await voice.synthesize(normalize_for_tts(text, language), language)
                 if voice.last_used_fallback:
                     continue
                 pcm = apply_fade(sanitize_pcm16(pcm), fade_in=True, fade_out=True)
@@ -270,8 +303,9 @@ class SpeechHandler:
         # The active response (greeting or caller turn) and its task.
         self._response: _Response | None = None
         self._response_task: asyncio.Task | None = None
-        self._last_filler_text: str | None = None
-        self._filler_index = 0
+        # Fillers already played this call, and the caller turn of the last.
+        self._used_fillers: set[str] = set()
+        self._last_filler_turn: int | None = None
         # Every task this handler created and has not yet seen finish —
         # cancelled and awaited by mark_stopped(), so nothing outlives the call.
         self._tasks: set[asyncio.Task] = set()
@@ -780,32 +814,80 @@ class SpeechHandler:
             self._spawn_background(self._context.refresh_running_summary())
 
     async def _maybe_play_filler(self, response: _Response) -> None:
-        """Play one cached acknowledgement if the real reply misses 1.2 s."""
-        if self._turn_number <= 1 or response.metrics.speech_end is None:
-            return
-        delay = max(0.0, 1.2 - (TurnMetrics.now() - response.metrics.speech_end))
+        """Play one short cached acknowledgement if no reply audio is ready
+        _FILLER_DELAY_S after the caller stopped speaking — sparingly, so it
+        never becomes a verbal tic."""
+        reason = await self._filler_skip_reason(response)
+        if reason is None:
+            reason = await self._play_filler(response)
+        if reason is not None:
+            logger.info(f"[FILLER] call_sid={self._call_sid} skipped reason={reason}")
+
+    async def _filler_skip_reason(self, response: _Response) -> str | None:
+        if self._turn_number <= 1:
+            return "first_turn"
+        if response.metrics.speech_end is None:
+            return "no_speech_end"
+        if (
+            self._last_filler_turn is not None
+            and self._turn_number - self._last_filler_turn < _FILLER_MIN_TURN_GAP
+        ):
+            return "recent_filler"
+        delay = max(0.0, _FILLER_DELAY_S - (TurnMetrics.now() - response.metrics.speech_end))
         try:
             await asyncio.wait_for(response.reply_audio_ready.wait(), timeout=delay)
-            return
+            return "reply_ready"
         except TimeoutError:
             pass
+        # The transcript and language must be known to choose (or rule out)
+        # a filler; no reply audio can exist before this point anyway.
+        await response.analyzed.wait()
+        if response.reply_audio_ready.is_set():
+            return "reply_ready"
+        # A transfer/end marker can arrive in the LAST segment. Only allow
+        # fillers once generation is complete and we know this is a normal
+        # reply. Generation runs ahead of synthesis, preserving streaming.
+        await response.reply_generated.wait()
+        if response.reply_audio_ready.is_set():
+            return "reply_ready"
+        if response.contains_control:
+            return "call_ending"
         ctx = self._context
-        if not self._is_current(response) or ctx is None or ctx.ended:
-            return
-        language = ctx.voice_language or ctx.reply_language
-        choices = [text for text in _FILLER_TEXTS if text != self._last_filler_text]
-        text = choices[self._filler_index % len(choices)]
-        self._filler_index += 1
+        if not self._is_current(response) or ctx is None:
+            return "stale"
+        if ctx.ended or ctx.transfer_department:
+            return "call_ending"
+        words = [w for w in _WORD_SPLIT.split((response.transcript or "").lower()) if w]
+        if words and all(w in _YES_NO_WORDS for w in words):
+            return "yes_no_answer"
+        if any(w in _CLOSING_WORDS for w in words):
+            return "closing_or_transfer"
+        return None
+
+    async def _play_filler(self, response: _Response) -> str | None:
+        """Play the next unused filler; the skip reason if none was played."""
+        language = response.language or "en"
+        text = next(
+            (t for t in _FILLER_TEXTS.get(language, ()) if t not in self._used_fillers), None
+        )
+        if text is None:
+            return "all_used"
         frames = _FILLER_AUDIO_CACHE.get((text, language))
         if not frames:
-            return
+            return "not_cached"
+        if response.reply_audio_ready.is_set() or not self._is_current(response):
+            return "reply_ready"
+        # Reserve before emitting: even a partially interrupted clip counts
+        # as used and must not repeat on the next caller turn.
+        response.filler_played = True
+        self._used_fillers.add(text)
+        self._last_filler_turn = self._turn_number
         for frame in frames:
             if response.reply_audio_ready.is_set() or not self._is_current(response):
-                return
+                return "reply_ready"
             if not await self._emit_audio(frame, response):
-                return
-        response.filler_played = True
-        self._last_filler_text = text
+                return "stale"
+        logger.info(f"[FILLER] call_sid={self._call_sid} played={text}")
         log_call_event(
             "voice.filler.played",
             call_sid=self._call_sid,
@@ -813,6 +895,7 @@ class SpeechHandler:
             language=language,
             text=text,
         )
+        return None
 
     # ── Greeting ─────────────────────────────────────────────────────────────
 
@@ -1002,6 +1085,9 @@ class SpeechHandler:
         # off no longer ends the call; only this reply's marker can.
         ctx.ended = False
         ctx.transfer_department = None
+        # One language for the whole reply (voice included), decided now.
+        response.language = self._voice_language()
+        response.analyzed.set()
         await self._speak_reply(response, rag_context=knowledge_context)
         response.metrics.response_complete = TurnMetrics.now()
         await self._finish_playback(response)
@@ -1052,11 +1138,12 @@ class SpeechHandler:
         sample_rate = self._buffer.sample_rate if self._buffer else 8000
         wav = wrap_pcm16_wav(response.caller_pcm or b"", sample_rate)
         self._maybe_save_debug_audio(wav, self._call_sid, self._turn_number)
-        # Never force a transcription language: Indian callers code-switch
-        # mid-sentence, and a hard "en"/"hi" hint drops the Hindi words or
-        # transliterates the English ones into Devanagari. The model
-        # auto-detects per utterance (with the vocabulary prompt).
-        hint = None
+        # Hint the established call language for English and Hindi calls;
+        # Hinglish (code-switched) and not-yet-known calls auto-detect, since
+        # a hard hint there drops the Hindi words or transliterates the
+        # English ones.
+        ctx = self._context
+        hint = ctx.language if ctx.language_locked and ctx.language in ("en", "hi") else None
         response.metrics.stt_start = TurnMetrics.now()
         try:
             async with asyncio.timeout(self._settings.stt_timeout_seconds):
@@ -1095,7 +1182,7 @@ class SpeechHandler:
         return transcript
 
     def _update_language(self, transcript: str, turn_id: int | None = None) -> float | None:
-        """Update the call's language profile from one caller turn.
+        """Update the call language from one caller turn's full transcript.
 
         Local and deterministic (app/ai/language_profile.py) — no LLM or
         network call, so it adds microseconds, not milliseconds, between
@@ -1111,41 +1198,82 @@ class SpeechHandler:
             extra_acknowledgements=self._settings.language_extra_acknowledgements,
         )
         decision = update_language_profile(
-            ctx, analysis, switch_turns=self._settings.language_switch_turns
+            ctx,
+            analysis,
+            switch_min_words=self._settings.language_switch_min_words,
+            switch_ratio=self._settings.language_switch_ratio,
         )
-        if ctx.language_locked and ctx.voice_language is None:
-            ctx.voice_language = ctx.primary_language
-        if self._settings.voice_follows_language and decision.response_language in LANGUAGES:
-            ctx.voice_language = decision.response_language
+        # The TTS voice follows the call language.
+        if ctx.reply_language in LANGUAGES:
+            ctx.voice_language = ctx.reply_language
         elapsed_ms = (time.perf_counter() - started) * 1000
+        call_language = decision.preference
+        logger.info(
+            f"[LANG] call_sid={ctx.call_sid} detected={analysis.language} "
+            f"words={analysis.content_words} ratio={analysis.hindi_ratio:.2f} "
+            f"call_language={call_language} switched={decision.switched} "
+            f"reason={decision.switch_reason}"
+        )
         log_call_event(
             "voice.language.detected",
             call_sid=ctx.call_sid,
             turn_id=turn_id if turn_id is not None else self._turn_id,
             **analysis.as_log_fields(),
             previous_preference=decision.previous_preference,
-            preference=decision.preference,
+            preference=call_language,
             primary=decision.primary,
             response_language=decision.response_language,
             switch_reason=decision.switch_reason,
             language_ms=round(elapsed_ms, 3),
         )
-        if decision.preference_changed:
-            logger.info(
-                f"[LANGUAGE] call_sid={ctx.call_sid} language={ctx.language} "
-                f"locked=True reason={decision.switch_reason}"
-            )
         return round(elapsed_ms, 3)
+
+    def _voice_language(self) -> str:
+        ctx = self._context
+        if ctx is None:
+            return "en"
+        return ctx.voice_language or ctx.language
 
     async def _speak_reply(self, response: _Response, rag_context: str | None = None) -> None:
         """Stream the LLM reply into TTS one sentence at a time."""
         assert self._engine is not None and self._context is not None
         response.metrics.llm_request_start = TurnMetrics.now()
-        replies = self._engine.stream_reply(
+        source = self._engine.stream_reply(
             self._context,
             first_token_timeout=self._settings.llm_first_token_timeout_seconds,
             rag_context=rag_context,
         )
+
+        async def prefetch() -> AsyncIterator[str]:
+            queue: asyncio.Queue[str | Exception | None] = asyncio.Queue()
+
+            async def produce() -> None:
+                try:
+                    async with aclosing(source) as stream:
+                        async for segment in stream:
+                            if "END_CALL" in segment or _TRANSFER_RE.search(segment):
+                                response.contains_control = True
+                            queue.put_nowait(segment)
+                except Exception as exc:
+                    queue.put_nowait(exc)
+                finally:
+                    response.reply_generated.set()
+                    queue.put_nowait(None)
+
+            producer = asyncio.create_task(produce())
+            try:
+                while True:
+                    item = await queue.get()
+                    if item is None:
+                        break
+                    if isinstance(item, Exception):
+                        raise item
+                    yield item
+            finally:
+                producer.cancel()
+                await asyncio.gather(producer, return_exceptions=True)
+
+        replies = prefetch()
         first_segment = True
         async with aclosing(replies) as segments:
             async for segment in segments:
@@ -1194,8 +1322,11 @@ class SpeechHandler:
             if not self._is_current(response):
                 return
         ctx = self._context
-        lang = ctx.voice_language if ctx and ctx.voice_language else (ctx.language if ctx else "en")
-        
+        # Decided once per response (its first sentence), never per sentence.
+        if response.language is None:
+            response.language = self._voice_language()
+        lang = response.language
+
         # Phone number filter
         caller_digits = "".join(c for c in (ctx.caller_number if ctx else "") if c.isdigit())
         # Check if text contains caller number. If it does, we allow it.
@@ -1217,6 +1348,10 @@ class SpeechHandler:
         text = _PHONE_NUMBER_RE.sub(_filter_phone, text)
         if not text.strip():
             return
+        # What the voice reads (brand pronunciations, no ALL-CAPS spelling);
+        # the history keeps `segment_text` below as written.
+        segment_text = text
+        text = normalize_for_tts(text, lang)
 
         if response.metrics.tts_request_start is None:
             response.metrics.tts_request_start = TurnMetrics.now()
@@ -1224,7 +1359,10 @@ class SpeechHandler:
             "voice.request", operation="tts", call_sid=self._call_sid, text_length=len(text)
         )
         first_frame = True
-        voice_profile = self._tts_voice_profile(lang)
+        if not response.voice_selected:
+            response.voice_profile = self._tts_voice_profile(lang)
+            response.voice_selected = True
+        voice_profile = response.voice_profile
         async with aclosing(self._synthesize(text, lang, voice_profile)) as frames:
             async for frame in frames:
                 response.reply_audio_ready.set()
@@ -1240,7 +1378,9 @@ class SpeechHandler:
                 )
                 if on_frame is not None:
                     await on_frame(frame)
-                if not await self._emit_audio(frame, response, text if first_frame else None):
+                if not await self._emit_audio(
+                    frame, response, segment_text if first_frame else None
+                ):
                     return
                 if first_frame:
                     if response.metrics.tts_first_chunk is None:

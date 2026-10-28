@@ -174,9 +174,9 @@ def test_short_english_reply_does_not_flip_hindi_call(mock_db_session):
     handler._update_language("ok")
     assert handler._context.language == "hi"
     handler._update_language("Actually I want to talk about an office renovation project")
-    assert handler._context.language == "hi" # Has not switched yet due to counter
+    assert handler._context.language == "en"  # Clear English turn exceeds 70%.
     handler._update_language("And how much would that cost?")
-    assert handler._context.language == "en" # Now switches due to consecutive turns
+    assert handler._context.language == "en" # Remains English.
 
 
 # ── Silence handling ───────────────────────────────────────────────────────
@@ -208,7 +208,7 @@ async def test_silent_caller_is_reprompted_then_call_ends(mock_db_session):
 
     spoken = [c.args[0] for c in voice.synthesize.call_args_list]
     assert any("able to hear me" in t.lower() for t in spoken)
-    assert any("thank you for contacting kinikh group" in t.lower() for t in spoken)
+    assert any("thank you for contacting किनिख group" in t.lower() for t in spoken)
     hangup.assert_awaited_once()
     await handler.mark_stopped()
 

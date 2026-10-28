@@ -2152,7 +2152,7 @@ class TestGreetingLanguages:
             await handler._ensure_initialized("GR_EN", "+91000")
 
         args = mock_voice.synthesize.call_args[0]
-        assert "Welcome to Kinikh Group" in args[0]
+        assert "Welcome to किनिख Group" in args[0]
         mock_ai.chat.assert_not_called()  # never OpenAI-generated
 
     @pytest.mark.asyncio

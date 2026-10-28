@@ -1,4 +1,4 @@
-"""Per-turn language analysis and the sticky-but-adaptive call language profile.
+"""Per-turn language analysis and the call language lock.
 
 Everything here is local, deterministic and allocation-light: no network, no
 LLM. It runs on every caller turn between speech-to-text and the main
@@ -8,15 +8,15 @@ Language codes are the project's existing ones (stored on calls/leads, used
 by TTS voice maps): "en", "hi", "hi-en" (Hinglish), plus "unknown" for "no
 evidence yet".
 
-Two separate decisions are made per turn:
-
-- RESPONSE language for *this* reply — mirrors any clear (meaningful) caller
-  turn immediately, so a caller who switches is answered in the new language
-  straight away.
-- Session PREFERENCE (CallContext.language) — the long-term call language.
-  It only moves after `switch_turns` consecutive meaningful turns in a new
-  language, one very strong full turn, or an explicit request. Short
-  acknowledgements ("haan", "okay", "ji") never move either decision.
+The call has ONE language (CallContext.language) and every reply uses it:
+- The first substantive caller turn (>= min_words content words) sets it.
+- It switches only on an explicit request ("Hindi mein baat karo", "speak in
+  English"), or on a turn of >= switch_min_words content words of which
+  >= switch_ratio are clearly the other language.
+- Short replies, names, numbers, yes/no words ("haan", "ok", "theek hai")
+  and service words ("website", "booking") never switch it.
+- Hindi and Hinglish are one family: moving between them needs an explicit
+  request (both are spoken with the same Devanagari + English-words style).
 """
 
 from __future__ import annotations
@@ -42,9 +42,9 @@ HIGH = "high"
 MEDIUM = "medium"
 LOW = "low"
 
-# A single turn this long, with no evidence of the other language, moves the
-# session preference on its own (otherwise `switch_turns` turns are needed).
-STRONG_TURN_MIN_WORDS = 12
+# Defaults for the switch rule (LANGUAGE_SWITCH_MIN_WORDS / _RATIO settings).
+SWITCH_MIN_WORDS = 4
+SWITCH_RATIO = 0.7
 
 # ── Lexicons (the single place to extend) ───────────────────────────────────
 
@@ -202,6 +202,23 @@ class LanguageAnalysis:
     mixed_language: bool  # both Hindi and English evidence present
     explicit_request: str | None = None
     content_words: int = 0
+    # Evidence counts behind the decision (no caller words are kept).
+    hindi_words: int = 0
+    english_words: int = 0
+    english_function_words: int = 0
+    neutral_latin_words: int = 0
+
+    @property
+    def hindi_ratio(self) -> float:
+        """Share of language-bearing words that are Hindi (Devanagari script
+        or romanised Hindi); the rest are English (Latin script)."""
+        total = self.hindi_words + self.english_words + self.neutral_latin_words
+        return self.hindi_words / total if total else 0.0
+
+    def other_language_share(self, call_language: str) -> float:
+        """Share of this turn's words in the language family other than
+        `call_language`."""
+        return self.hindi_ratio if call_language == EN else 1.0 - self.hindi_ratio
 
     def as_log_fields(self) -> dict[str, object]:
         return {
@@ -224,7 +241,7 @@ def analyze_language(
     if not tokens or " ".join(tokens) in _ack_phrases(extra_acknowledgements):
         return LanguageAnalysis(UNKNOWN, LOW, False, False, explicit, 0)
 
-    hindi_script = roman_hindi = en_function = business = content = 0
+    hindi_script = roman_hindi = en_function = business = content = neutral_latin = 0
     for token in tokens:
         if token in low_evidence:
             continue
@@ -237,7 +254,10 @@ def analyze_language(
             en_function += 1
         elif token in BUSINESS_TERMS:
             business += 1
-        # anything else (names, places, unknown words) is neutral
+        elif any(c.isascii() and c.isalpha() for c in token):
+            # Count the full Latin transcript in the script ratio. Unknown
+            # words cannot establish English without grammar evidence.
+            neutral_latin += 1
 
     hindi = hindi_script + roman_hindi
     english = en_function + business
@@ -270,10 +290,13 @@ def analyze_language(
         confidence = HIGH
     else:
         confidence = MEDIUM
-    return LanguageAnalysis(language, confidence, meaningful, mixed, explicit, content)
+    return LanguageAnalysis(
+        language, confidence, meaningful, mixed, explicit, content, hindi, english, en_function,
+        neutral_latin
+    )
 
 
-# ── Session profile (hysteresis) ────────────────────────────────────────────
+# ── Call language lock ──────────────────────────────────────────────────────
 
 
 @dataclass(frozen=True, slots=True)
@@ -284,22 +307,52 @@ class LanguageDecision:
     primary: str
     switch_reason: str
     preference_changed: bool
+    # The established call language moved to another language this turn.
+    switched: bool = False
 
 
 def _same_family(a: str, b: str) -> bool:
     return a == b or (a in (HI, HINGLISH) and b in (HI, HINGLISH))
 
 
+def _is_clear_switch(
+    analysis: LanguageAnalysis, call_language: str, min_words: int, ratio: float
+) -> tuple[bool, str]:
+    if not analysis.meaningful or analysis.language == UNKNOWN:
+        return False, "short_or_low_evidence"
+    english_dominant = (
+        call_language != EN
+        and analysis.english_function_words >= 2
+        and analysis.other_language_share(call_language) >= ratio
+    )
+    if _same_family(analysis.language, call_language) and not english_dominant:
+        return False, "same_language"
+    if analysis.content_words < min_words:
+        return False, "too_short_to_switch"
+    if analysis.other_language_share(call_language) < ratio:
+        return False, "not_clearly_other_language"
+    if analysis.language == EN and analysis.english_function_words < 2:
+        # Service words alone ("website construction booking") are how
+        # Hindi speakers talk too — only English grammar is a real switch.
+        return False, "service_words_only"
+    return True, "clear_other_language"
+
+
 def update_language_profile(
-    ctx: CallContext, analysis: LanguageAnalysis, *, switch_turns: int = 2
+    ctx: CallContext,
+    analysis: LanguageAnalysis,
+    *,
+    switch_min_words: int = SWITCH_MIN_WORDS,
+    switch_ratio: float = SWITCH_RATIO,
 ) -> LanguageDecision:
-    """Apply one caller turn to the call's language profile (mutates `ctx`)
-    and return the language the reply to this turn should use."""
+    """Apply one caller turn to the call language (mutates `ctx`) and return
+    the language the reply to this turn uses — always the call language once
+    it is set."""
     established = ctx.language_locked
     previous = ctx.language if established else UNKNOWN
     changed = False
 
-    def _set_preference(language: str) -> None:
+    def _set_language(language: str) -> None:
         nonlocal changed
         changed = changed or ctx.language != language or not ctx.language_locked
         ctx.language = language
@@ -307,61 +360,33 @@ def update_language_profile(
             ctx.primary_language = language
         ctx.language_locked = True
         ctx.language_detected = True
-        ctx.pending_language = None
-        ctx.consecutive_other_language_turns = 0
 
-    if analysis.meaningful:
-        ctx.current_turn_language = analysis.language
-        ctx.language_confidence = analysis.confidence
-    else:
-        ctx.current_turn_language = UNKNOWN
-        ctx.language_confidence = LOW
+    ctx.current_turn_language = analysis.language if analysis.meaningful else UNKNOWN
+    ctx.language_confidence = analysis.confidence if analysis.meaningful else LOW
 
     if analysis.explicit_request:
-        _set_preference(analysis.explicit_request)
+        _set_language(analysis.explicit_request)
         ctx.language_explicit = True
         reason = "explicit_request"
-        response = analysis.explicit_request
-    elif not analysis.meaningful:
-        # Acknowledgements, names, one-word answers: keep speaking whatever
-        # the conversation is currently in.
-        reason = "low_evidence_retain" if established else "awaiting_evidence"
-        response = ctx.reply_language if established else UNKNOWN
     elif not established:
-        _set_preference(analysis.language)
-        reason = "first_meaningful_turn"
-        response = analysis.language
-    elif ctx.language_explicit:
-        # The caller chose a language; follow it until they choose again,
-        # or speak another language turn after turn.
-        reason = "explicit_preference"
-        if _same_family(analysis.language, ctx.language):
-            ctx.pending_language = None
-            ctx.consecutive_other_language_turns = 0
+        if analysis.meaningful:
+            _set_language(analysis.language)
+            reason = "first_substantive_turn"
         else:
-            _count_toward(ctx, analysis.language)
-            if ctx.consecutive_other_language_turns > switch_turns:
-                _set_preference(analysis.language)
-                ctx.language_explicit = False
-                reason = "sustained_switch_over_explicit"
+            reason = "awaiting_evidence"
+    else:
+        switch, reason = _is_clear_switch(analysis, ctx.language, switch_min_words, switch_ratio)
+        if switch:
+            target = EN if ctx.language != EN else analysis.language
+            _set_language(target)
+            ctx.language_explicit = False
+
+    if ctx.language_locked:
         response = ctx.language
     else:
+        # Not set yet ("hello", "haan ji"): answer in whatever this turn
+        # shows, if anything, without fixing it for the call.
         response = analysis.language
-        reason = "matches_preference" if analysis.language == ctx.language else "clear_current_turn"
-        if analysis.language == ctx.language:
-            ctx.pending_language = None
-            ctx.consecutive_other_language_turns = 0
-        else:
-            _count_toward(ctx, analysis.language)
-            strong = (
-                analysis.confidence == HIGH
-                and not analysis.mixed_language
-                and analysis.content_words >= STRONG_TURN_MIN_WORDS
-            )
-            if strong or ctx.consecutive_other_language_turns >= switch_turns:
-                _set_preference(analysis.language)
-                reason = "strong_turn_switch" if strong else "consecutive_turns_switch"
-
     ctx.response_language = response
     return LanguageDecision(
         response_language=response,
@@ -370,12 +395,5 @@ def update_language_profile(
         primary=ctx.primary_language,
         switch_reason=reason,
         preference_changed=changed,
+        switched=established and changed,
     )
-
-
-def _count_toward(ctx: CallContext, language: str) -> None:
-    if ctx.pending_language == language:
-        ctx.consecutive_other_language_turns += 1
-    else:
-        ctx.pending_language = language
-        ctx.consecutive_other_language_turns = 1

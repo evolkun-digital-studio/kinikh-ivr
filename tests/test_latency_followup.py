@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import time
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -102,13 +103,17 @@ async def test_cached_filler_after_deadline_is_not_history(mock_db_session, monk
         ),
     )
     handler._response = response
-    monkeypatch.setitem(_FILLER_AUDIO_CACHE, ("Ji.", "en"), [b"\x00\x00" * 1600])
+    response.transcript = "I need a website"
+    response.language = "en"
+    response.analyzed.set()
+    response.reply_generated.set()
+    monkeypatch.setitem(_FILLER_AUDIO_CACHE, ("Okay.", "en"), [b"\x00\x00" * 1600])
 
-    await handler._maybe_play_filler(response)
+    await asyncio.wait_for(handler._maybe_play_filler(response), timeout=1)
 
     assert response.filler_played is True
     assert ctx.messages == []
-    assert handler._last_filler_text == "Ji."
+    assert handler._used_fillers == {"Okay."}
 
 
 def test_turn_log_contains_requested_latency_fields():
