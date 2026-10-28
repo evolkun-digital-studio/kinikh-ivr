@@ -27,6 +27,13 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     settings = get_settings()
     configure_logging(settings.app_env, settings.app_debug)
     logger.info(f"Starting {settings.app_name} [{settings.app_env}]")
+    logger.info(
+        "[VOICE_CONFIG] live_model={} tts_model={} end_of_speech_ms={} tts_lookahead_ms={}",
+        settings.openai_live_model or settings.openai_model,
+        settings.elevenlabs_model_id,
+        settings.end_of_speech_ms,
+        settings.tts_lookahead_ms,
+    )
 
     engine = get_engine()
     async with engine.connect() as conn:

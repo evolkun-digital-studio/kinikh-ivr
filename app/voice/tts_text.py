@@ -22,6 +22,10 @@ from app.core.config import get_settings
 
 _HINDI_LANGUAGES = frozenset({"hi", "hi-en"})
 _ALL_CAPS_WORD = re.compile(r"(?<!\w)[A-Z]{4,}(?!\w)")
+# "Ek pal" sounds too heavy/formal on a call; the prompt bans it, and this
+# catches any reply that slips through.
+_EK_PAL = re.compile(r"(?<![\w\u0900-\u097F])(?:एक\s+पल|ek\s+pal)(?![\w\u0900-\u097F])", re.I)
+_EK_PAL_REPLACEMENT = "One second"
 
 
 @lru_cache(maxsize=16)
@@ -45,6 +49,7 @@ def normalize_for_tts(text: str, language: str = "en") -> str:
     """The text the TTS voice should actually read for `text`."""
     if not text:
         return text
+    text = _EK_PAL.sub(_EK_PAL_REPLACEMENT, text)
     settings = get_settings()
     spec = settings.tts_pronunciations
     if language in _HINDI_LANGUAGES and settings.tts_pronunciations_hi:

@@ -60,10 +60,11 @@ async def test_live_llm_uses_summary_rag_last_eight_and_minimal_reasoning(monkey
     assert len(ctx.messages) == 12  # post-call transcript remains complete
 
 
-def test_first_four_word_clause_flushes_immediately():
-    ready, rest = split_speakable("We can help with that, and keep streaming")
-    assert ready == ["We can help with that,"]
-    assert rest == "and keep streaming"
+def test_complete_sentence_flushes_without_splitting_at_commas():
+    text = "We can help with that, and keep streaming."
+    ready, rest = split_speakable(text)
+    assert ready == [text]
+    assert rest == ""
 
 
 @pytest.mark.asyncio

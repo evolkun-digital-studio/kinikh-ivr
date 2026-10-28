@@ -364,7 +364,7 @@ async def test_18_facts_identical_across_response_languages():
     assert set(prompts) == {EN, HI, HINGLISH}
 
     def _facts(prompt: str) -> str:
-        return prompt[prompt.index("# Company information"):]
+        return prompt[prompt.index("# Company information"):].split("\n\nFINAL SPOKEN LANGUAGE:")[0]
 
     # The company facts and RAG text reach the model byte-for-byte the same,
     # whatever the language; only the language directive differs.

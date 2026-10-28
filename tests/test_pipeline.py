@@ -471,7 +471,12 @@ class TestSpeechHandlerPipeline:
     # ── Finalization (Lead → DB → Email) ────────────────────────────────────
 
     @pytest.mark.asyncio
-    async def test_finalize_creates_lead_in_db(self, mock_db_session):
+    @pytest.mark.parametrize("extracted_name,provided_name,expected_name", [
+        ("Raj Kumar", None, "Raj Kumar"),
+        (None, "Rahul Sharma", "Rahul Sharma"),
+        ("Raj Kumar", "Rahul Sharma", "Raj Kumar"),
+    ])
+    async def test_finalize_creates_lead_in_db(self, mock_db_session, extracted_name, provided_name, expected_name):
         """finalize() extracts lead data and persists it to the database."""
         from app.services.call_service import CallService
         from app.services.department_service import DepartmentService
@@ -480,7 +485,9 @@ class TestSpeechHandlerPipeline:
 
         mock_voice = self._mock_voice()
         mock_ai = self._mock_ai_client()
-        mock_ai.chat_json = AsyncMock(return_value=_lead_extraction_result())
+        extracted = _lead_extraction_result()
+        extracted["name"] = extracted_name
+        mock_ai.chat_json = AsyncMock(return_value=extracted)
         handler, _ = self._make_handler(mock_db_session, mock_voice, mock_ai)
 
         mock_dept = _make_mock_dept()
@@ -489,6 +496,7 @@ class TestSpeechHandlerPipeline:
 
         handler._context.add_message("user", "I am Raj Kumar")
         handler._context.add_message("assistant", "Hello Raj!")
+        handler._context.collected["name"] = provided_name
 
         mock_call = _make_mock_call("CA010")
         mock_lead = _make_mock_lead()
@@ -506,7 +514,7 @@ class TestSpeechHandlerPipeline:
         create_from_call_mock.assert_called_once()
         call_kwargs = create_from_call_mock.call_args.kwargs
         assert call_kwargs["phone"] == "+919876543210"
-        assert call_kwargs["name"] == "Raj Kumar"
+        assert call_kwargs["name"] == expected_name
         assert call_kwargs["requirement"] == "Product demo needed"
 
     @pytest.mark.asyncio

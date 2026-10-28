@@ -51,12 +51,14 @@ def _caller_id_instruction(caller_number: str) -> str:
 _LANGUAGE_DIRECTIVES = {
     "en": (
         "Speak conversational spoken English, even if the caller uses a few Hindi words. "
-        "Do not use any Hindi in this reply."
+        "Do not use any Hindi in this reply, including Ji, Haanji or Achha. "
+        "Use English for acknowledgements, apologies and the closing too."
     ),
     "hi": (
         "Speak everyday spoken Hindi. Write every Hindi word in Devanagari script and keep "
         "common English words (website, booking, team, construction, project, call, number, "
-        "email) in English letters. Do not switch to English sentences."
+        "email) in English letters. Do not switch to English sentences, greetings, apologies "
+        "or closing lines. Keep the whole conversation in Hindi sentence structure."
     ),
     "hi-en": (
         "Speak natural conversational Hinglish, the relaxed Hindi-English mix people use on "
@@ -72,7 +74,7 @@ _UNKNOWN_LANGUAGE_DIRECTIVE = (
 )
 
 
-def _language_instruction(call_language: str) -> str:
+def language_instruction(call_language: str) -> str:
     if call_language not in LANGUAGE_NAMES:
         return _UNKNOWN_LANGUAGE_DIRECTIVE
     return (
@@ -114,14 +116,14 @@ class PromptManager:
     ) -> str:
         if response_language not in LANGUAGE_NAMES:
             response_language = language if language_locked else UNKNOWN
-        language_instruction = _language_instruction(response_language)
+        reply_language_instruction = language_instruction(response_language)
 
         return GREETING_PROMPT.format(
             company_name=company_name,
             business_context=business_context,
             caller_id_instruction=_caller_id_instruction(caller_number),
             current_time=current_time or "unknown",
-            language_instruction=language_instruction,
+            language_instruction=reply_language_instruction,
             management_transfer_instruction=(
                 MANAGEMENT_TRANSFER_AVAILABLE_RULE
                 if transfer_available

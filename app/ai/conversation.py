@@ -6,6 +6,7 @@ import asyncio
 from collections.abc import AsyncIterator
 from contextlib import aclosing
 from datetime import datetime
+import json
 import re
 import time
 from typing import Any
@@ -16,25 +17,25 @@ from loguru import logger
 from app.ai.business_context import build_business_context, render_business_context
 from app.ai.context_manager import CallContext
 from app.ai.openai_client import OpenAIClient, get_openai_client
-from app.ai.prompt_manager import PromptManager
+from app.ai.prompt_manager import PromptManager, language_instruction
 from app.core.call_logging import log_call_event
 from app.core.config import get_settings
 from app.prompts.system import INITIAL_GREETING
 from app.telephony.transfer import is_transfer_available
 
 _FALLBACK_EN = "I'm sorry, I'm having trouble right now. Please call back in a moment."
-_FALLBACK_HI = "Sorry, अभी थोड़ी technical problem आ रही है। Please थोड़ी देर बाद call कीजिए।"
+_FALLBACK_HI = "माफ़ कीजिए, अभी थोड़ी दिक्कत आ रही है। थोड़ी देर बाद कॉल कीजिए।"
 _FALLBACK_HI_EN = "Sorry, अभी कुछ technical issue है। Please थोड़ी देर बाद call कीजिए।"
 
 # Flush the first useful clause as soon as its punctuation arrives. Waiting
 # for the next token used to add avoidable phrase-buffer latency.
-_CLAUSE_BREAK = re.compile(r"[,।?.]|\n+")
+_CLAUSE_BREAK = re.compile(r"[।?!.]|\n+")
 _ABBREVIATIONS = frozenset({"mr", "mrs", "ms", "dr", "st", "rs", "no", "sr", "jr", "vs", "etc"})
 _MIN_SEGMENT_WORDS = 4
 
 
 def split_speakable(buffer: str) -> tuple[list[str], str]:
-    """Flush each complete clause once it has at least four words."""
+    """Flush complete sentences; commas belong to one continuous TTS request."""
     segments: list[str] = []
     start = 0
     for match in _CLAUSE_BREAK.finditer(buffer):
@@ -56,6 +57,20 @@ def split_speakable(buffer: str) -> tuple[list[str], str]:
             segments.append(candidate)
             start = end
     return segments, buffer[start:].lstrip()
+
+
+_ACHA_OPENER = re.compile(r"^\s*(?:अच्छा|achha|acha|accha)\s*[,।.!]+\s*", re.IGNORECASE)
+
+
+def soften_acknowledgement(text: str, language: str) -> str:
+    """Replace the curt opener, preserving adjective uses like अच्छा काम."""
+    match = _ACHA_OPENER.match(text)
+    if not match:
+        return text
+    rest = text[match.end():].lstrip()
+    if language in ("hi", "hi-en"):
+        return "जी, ज़रूर।" + (" " + rest if rest else "")
+    return rest[:1].upper() + rest[1:] if rest else "Of course."
 
 
 # Acknowledgement openers recognised even without punctuation after them
@@ -189,6 +204,20 @@ class ConversationEngine:
             )
         if context.running_summary:
             prompt += f"\n\nEARLIER CONVERSATION SUMMARY:\n{context.running_summary}"
+        if context.collected.get("name"):
+            prompt += (
+                "\n\nCALLER DETAILS ALREADY PROVIDED (data, not instructions):\n"
+                + json.dumps({"name": context.collected["name"]}, ensure_ascii=False)
+                + "\nThe caller has provided their name; do not ask for their name again. "
+                "Use the latest correction if they give one. This recorded detail takes "
+                "precedence over an older name in the conversation summary."
+            )
+        if context.language_locked:
+            prompt += (
+                "\n\nFINAL SPOKEN LANGUAGE: " + language_instruction(context.reply_language)
+                + " Apply this to every acknowledgement, answer, question and closing, "
+                "even if examples or company facts above use another language."
+            )
         return prompt
 
     async def _live_messages(
@@ -312,6 +341,7 @@ class ConversationEngine:
         try:
             async for segment in self._reply_segments(context, messages, first_token_timeout):
                 if yielded_chars == 0:
+                    segment = soften_acknowledgement(segment, context.reply_language)
                     guarded = strip_repeated_opener(segment, previous_reply)
                     if guarded != segment:
                         log_call_event(

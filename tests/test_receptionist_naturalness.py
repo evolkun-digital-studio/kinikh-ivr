@@ -221,7 +221,7 @@ async def test_startup_caches_use_normalized_text(monkeypatch):
     await speech.prewarm_fillers()
     assert len(speech._FILLER_AUDIO_CACHE) == 9
     spoken = {call.args[0] for call in voice.synthesize.call_args_list}
-    assert spoken == {"Okay.", "Sure.", "Right.", "अच्छा।", "ठीक है।", "जी।"}
+    assert spoken == {"Okay.", "Sure.", "Right.", "जी, ज़रूर।", "बिल्कुल।", "जी।"}
 
 
 @pytest.mark.asyncio

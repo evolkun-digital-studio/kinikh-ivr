@@ -63,6 +63,7 @@ from app.ai.language_profile import (
 )
 from app.ai.lead_extractor import LeadExtractor
 from app.ai.openai_client import OpenAIClient
+from app.ai.name_capture import extract_caller_name
 from app.ai.prompt_manager import PromptManager
 from app.ai.summary_generator import SummaryGenerator
 from app.core.call_logging import log_call_event, mask_phone
@@ -162,6 +163,7 @@ class _Response:
     language: str | None = None
     voice_profile: str | None = None
     voice_selected: bool = False
+    audio_lock: asyncio.Lock = field(default_factory=asyncio.Lock)
 
 
 ResponseRunner = Callable[[_Response], Awaitable[None]]
@@ -173,8 +175,8 @@ _GREETING_AUDIO_CACHE: dict[tuple[str, str], list[bytes]] = {}
 # prepared (see SpeechHandler._maybe_play_filler). Each at most once a call.
 _FILLER_TEXTS: dict[str, tuple[str, ...]] = {
     "en": ("Okay.", "Sure.", "Right."),
-    "hi": ("अच्छा।", "ठीक है।", "जी।"),
-    "hi-en": ("अच्छा।", "ठीक है।", "जी।"),
+    "hi": ("जी, ज़रूर।", "बिल्कुल।", "जी।"),
+    "hi-en": ("जी, ज़रूर।", "बिल्कुल।", "जी।"),
 }
 _FILLER_AUDIO_CACHE: dict[tuple[str, str], list[bytes]] = {}
 _FILLER_DELAY_S = 1.5
@@ -296,6 +298,7 @@ class SpeechHandler:
         self._segment_id = 0
         # (pcm frame, response, segment text if this is the segment's first frame)
         self._outbound_queue: asyncio.Queue[tuple] = asyncio.Queue(maxsize=100)
+        self._pending_audio_bytes = 0
         self._outbound_writer_task: asyncio.Task | None = None
         self._turn_committed = True
         # Display-only counter of caller turns for log banners.
@@ -882,11 +885,14 @@ class SpeechHandler:
         response.filler_played = True
         self._used_fillers.add(text)
         self._last_filler_turn = self._turn_number
-        for frame in frames:
+        async with response.audio_lock:
             if response.reply_audio_ready.is_set() or not self._is_current(response):
                 return "reply_ready"
-            if not await self._emit_audio(frame, response):
-                return "stale"
+            # Once the first frame plays, finish the clip. Real reply audio
+            # waits on the same lock, so a filler cannot be cut mid-word.
+            for frame in frames:
+                if not await self._emit_audio(frame, response):
+                    return "stale"
         logger.info(f"[FILLER] call_sid={self._call_sid} played={text}")
         log_call_event(
             "voice.filler.played",
@@ -1102,6 +1108,8 @@ class SpeechHandler:
         and carries the transcript over into their next utterance.
         """
         decision, reason = classify_turn_end(transcript)
+        if decision == "wait_unfinished" and extract_caller_name(transcript, self._last_assistant_reply()):
+            decision, reason = "reply", "complete_name_answer"
         words = len(transcript.split())
         extra = self._settings.unfinished_turn_extra_ms / 1000
         if decision == "wait_unfinished" and self._continuation_merges >= _MAX_CONTINUATION_MERGES:
@@ -1376,6 +1384,8 @@ class SpeechHandler:
         async with aclosing(self._synthesize(text, lang, voice_profile)) as frames:
             async for frame in frames:
                 response.reply_audio_ready.set()
+                if response.metrics.tts_first_chunk is None:
+                    response.metrics.tts_first_chunk = TurnMetrics.now()
                 reported_model = getattr(self._voice, "last_tts_model", None)
                 response.metrics.extra["tts_model"] = (
                     reported_model
@@ -1388,13 +1398,12 @@ class SpeechHandler:
                 )
                 if on_frame is not None:
                     await on_frame(frame)
-                if not await self._emit_audio(
-                    frame, response, segment_text if first_frame else None
-                ):
-                    return
+                async with response.audio_lock:
+                    if not await self._emit_audio(
+                        frame, response, segment_text if first_frame else None
+                    ):
+                        return
                 if first_frame:
-                    if response.metrics.tts_first_chunk is None:
-                        response.metrics.tts_first_chunk = TurnMetrics.now()
                     first_frame = False
 
     async def _wait_for_playback_headroom(self, response: _Response) -> None:
@@ -1403,8 +1412,8 @@ class SpeechHandler:
         hundred ms to first audio) still starts before silence."""
         lookahead = self._settings.tts_lookahead_ms / 1000
         while self._is_current(response) and (
-            not self._outbound_queue.empty()
-            or self._playback_until - TurnMetrics.now() > lookahead
+            self._pending_audio_bytes / (8000 * _PCM_BYTES_PER_SAMPLE)
+            + max(0.0, self._playback_until - TurnMetrics.now()) > lookahead
         ):
             await asyncio.sleep(0.02)
 
@@ -1458,17 +1467,26 @@ class SpeechHandler:
         if not response.committed:
             self._commit(response)
 
-        await self._outbound_queue.put((audio, response, segment_text))
+        self._pending_audio_bytes += len(audio)
+        try:
+            await self._outbound_queue.put((audio, response, segment_text))
+        except BaseException:
+            self._pending_audio_bytes = max(0, self._pending_audio_bytes - len(audio))
+            raise
         await asyncio.sleep(0)  # Yield to allow outbound_writer to process
         return True
 
     def _clear_outbound_queue(self) -> None:
         while not self._outbound_queue.empty():
             try:
-                self._outbound_queue.get_nowait()
-                self._outbound_queue.task_done()
+                item = self._outbound_queue.get_nowait()
+                self._audio_frame_done(item[0])
             except asyncio.QueueEmpty:
                 break
+
+    def _audio_frame_done(self, audio: bytes) -> None:
+        self._pending_audio_bytes = max(0, self._pending_audio_bytes - len(audio))
+        self._outbound_queue.task_done()
 
     async def _outbound_writer(self) -> None:
         """Single serialized task that paces and writes audio chunks to Exotel."""
@@ -1481,7 +1499,7 @@ class SpeechHandler:
             segment_text = item[2] if len(item) > 2 else None
 
             if not self._is_current(response) or not self._send_audio:
-                self._outbound_queue.task_done()
+                self._audio_frame_done(audio)
                 continue
             
             # Pace output within the writer, but allow checking cancellation
@@ -1494,7 +1512,7 @@ class SpeechHandler:
                     excess -= sleep_interval
                     
             if not self._is_current(response):
-                self._outbound_queue.task_done()
+                self._audio_frame_done(audio)
                 continue
 
             # Never let a bad chunk reach the caller as static — and never
@@ -1503,7 +1521,7 @@ class SpeechHandler:
             audio = sanitize_pcm16(audio)
             if not audio:
                 logger.warning(f"[VOICE] dropped non-PCM audio chunk call_sid={self._call_sid}")
-                self._outbound_queue.task_done()
+                self._audio_frame_done(audio)
                 continue
 
             sent_at = TurnMetrics.now()
@@ -1513,7 +1531,7 @@ class SpeechHandler:
                 logger.warning(
                     f"[VOICE] audio send failed call_sid={self._call_sid} error={exc!r}"
                 )
-                self._outbound_queue.task_done()
+                self._audio_frame_done(audio)
                 continue
             self._last_send_ms += (TurnMetrics.now() - sent_at) * 1000
             if segment_text:
@@ -1530,7 +1548,7 @@ class SpeechHandler:
             sample_rate = self._buffer.sample_rate if self._buffer else 8000
             playback_s = len(audio) / _PCM_BYTES_PER_SAMPLE / sample_rate
             self._playback_until = max(self._playback_until, TurnMetrics.now()) + playback_s
-            self._outbound_queue.task_done()
+            self._audio_frame_done(audio)
 
     def _commit(self, response: _Response) -> None:
         """The reply becomes audible: it can no longer be merged away, and
@@ -1751,17 +1769,21 @@ class SpeechHandler:
             logger.warning(f"[AUDIO_DEBUG] failed to save debug audio: {type(exc).__name__}")
 
     async def _try_extract_fields(self, text: str) -> None:
-        """Heuristic inline extraction — supplements the end-of-call full extraction."""
+        """Capture a clear caller name without another model/network request."""
         ctx = self._context
         if not ctx:
             return
-        lower = text.lower()
-        if not ctx.collected["name"] and ("my name is" in lower or "मेरा नाम" in text):
-            for phrase in ["my name is", "i am", "मेरा नाम"]:
-                if phrase in lower or phrase in text:
-                    after = text[text.lower().find(phrase) + len(phrase) :].strip().split()[0:2]
-                    ctx.collected["name"] = " ".join(after).strip(".,")
-                    break
+        name = extract_caller_name(text, self._last_assistant_reply())
+        if name:
+            ctx.collected["name"] = name
+
+    def _last_assistant_reply(self) -> str:
+        if self._context is None:
+            return ""
+        return next(
+            (message.content for message in reversed(self._context.messages) if message.role == "assistant"),
+            "",
+        )
 
     async def _build_confirmation(self) -> str:
         ctx = self._context
@@ -1811,6 +1833,8 @@ class SpeechHandler:
             lead_data = await self._lead_extractor.extract(
                 transcript, self._context.caller_number, department_names
             )
+            if not lead_data.get("name"):
+                lead_data["name"] = self._context.collected.get("name")
             if not lead_data.get("language") and self._context.language_detected:
                 lead_data["language"] = self._context.language
 

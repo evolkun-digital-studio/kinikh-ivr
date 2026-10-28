@@ -124,7 +124,7 @@ class Settings(BaseSettings):
     # The next sentence of a multi-sentence reply is sent to TTS once the
     # audio still to be played drops to this much — enough to cover TTS
     # time-to-first-audio so there is no gap between sentences.
-    tts_lookahead_ms: int = Field(default=600, ge=200)
+    tts_lookahead_ms: int = Field(default=1200, ge=200)
     # Real-time primary turn detector (app/voice/vad.py:UtteranceSegmenter) —
     # replaces the old "accumulate up to max_utterance_bytes or 800ms of no
     # new pushes, then check RMS once" design. Exotel's 20ms media frames are
