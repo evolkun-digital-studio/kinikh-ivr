@@ -24,7 +24,11 @@ _HINDI_LANGUAGES = frozenset({"hi", "hi-en"})
 _ALL_CAPS_WORD = re.compile(r"(?<!\w)[A-Z]{4,}(?!\w)")
 # "Ek pal" sounds too heavy/formal on a call; the prompt bans it, and this
 # catches any reply that slips through.
-_EK_PAL = re.compile(r"(?<![\w\u0900-\u097F])(?:एक\s+पल|ek\s+pal)(?![\w\u0900-\u097F])", re.I)
+# Word characters exclude the danda (।, ॥) so "एक पल।" still matches.
+_EK_PAL = re.compile(
+    r"(?<![\w\u0900-\u0963\u0966-\u097F])(?:एक\s+पल|ek\s+pal)(?![\w\u0900-\u0963\u0966-\u097F])",
+    re.I,
+)
 _EK_PAL_REPLACEMENT = "One second"
 
 

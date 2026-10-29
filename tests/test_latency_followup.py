@@ -82,7 +82,7 @@ async def test_stt_fallback_only_for_long_empty_speech(monkeypatch):
     long_wav = wrap_pcm16_wav(b"\x00\x00" * 8_000, 8_000)
     assert await client.transcribe(long_wav) == "fallback transcript"
     assert calls == [get_settings().stt_model, get_settings().stt_fallback_model]
-    assert client.last_stt_model == "gpt-4o-transcribe"
+    assert client.last_stt_model == get_settings().stt_fallback_model
 
     calls.clear()
     short_wav = wrap_pcm16_wav(b"\x00\x00" * 4_000, 8_000)

@@ -43,9 +43,10 @@ def test_configurable_ordered_whole_word_map_and_acronyms():
 def test_short_turn_never_switches(first, short):
     ctx = CallContext(call_sid="LANG", caller_number="")
     update_language_profile(ctx, analyze_language(first))
-    original = ctx.language
+    original, original_reply = ctx.language, ctx.reply_language
     update_language_profile(ctx, analyze_language(short))
-    assert ctx.language == ctx.reply_language == original
+    assert ctx.language == original
+    assert ctx.reply_language == original_reply
 
 
 def test_script_ratio_counts_unknown_latin_words_against_switch():
@@ -221,7 +222,9 @@ async def test_startup_caches_use_normalized_text(monkeypatch):
     await speech.prewarm_fillers()
     assert len(speech._FILLER_AUDIO_CACHE) == 9
     spoken = {call.args[0] for call in voice.synthesize.call_args_list}
-    assert spoken == {"Okay.", "Sure.", "Right.", "जी, ज़रूर।", "बिल्कुल।", "जी।"}
+    assert spoken == {
+        "Okay.", "Sure.", "Right.", "जी, sure।", "Okay।", "Sure।"
+    }
 
 
 @pytest.mark.asyncio
@@ -258,3 +261,88 @@ async def test_late_transfer_marker_blocks_filler_while_tts_waits(mock_db_sessio
         reply_task.cancel()
         filler_task.cancel()
         await asyncio.gather(reply_task, filler_task, return_exceptions=True)
+
+
+@pytest.mark.parametrize(
+    ("reply", "expected"),
+    [
+        ("Bhaiya, aapka naam kya hai?", "Sir, aapka naam kya hai?"),
+        ("भैया जी, आपका नाम क्या है?", "Sir, आपका नाम क्या है?"),
+        ("जी, website बन जाएगी, भैया।", "जी, website बन जाएगी, sir।"),
+        ("Thank you, bhai sahab.", "Thank you, sir."),
+        ("Didi, booking ho jayegi.", "Madam, booking ho jayegi."),
+        ("जी दीदी, बताइए।", "जी madam, बताइए।"),
+        ("Okay boss, done.", "Okay sir, done."),
+        ("Sure yaar, I'll note that.", "Sure, I'll note that."),
+        # The caller's brother is content, not a form of address.
+        ("आपके भाई के लिए booking हो जाएगी।", "आपके भाई के लिए booking हो जाएगी।"),
+        ("Your bossa nova booking is done.", "Your bossa nova booking is done."),
+    ],
+)
+def test_casual_address_becomes_sir_or_madam(reply, expected):
+    from app.ai.conversation import professional_address
+
+    assert professional_address(reply) == expected
+
+
+def test_prompt_requires_sir_or_madam():
+    from app.ai.prompt_manager import PromptManager
+
+    prompt = PromptManager().greeting("Kinikh Group", "INFO", language="hi", language_locked=True)
+    assert 'Address the caller as "sir" or "madam"' in prompt
+    assert "never how casual" in prompt
+    assert "as casual or formal" not in prompt
+
+
+@pytest.mark.parametrize(
+    ("reply", "expected"),
+    [
+        ("कृपया अपनी जानकारी दीजिए।", "Please अपनी details दीजिए।"),
+        ("आपकी आवश्यकता के अनुसार हम शीघ्र संपर्क करेंगे।",
+         "आपकी requirement के हिसाब से हम जल्दी contact करेंगे।"),
+        ("हमारी सेवाएं उपलब्ध हैं, धन्यवाद।", "हमारी services available हैं, thank you।"),
+        ("माफ़ कीजिए, मैं ठीक से सुन नहीं पाई।", "Sorry, मैं ठीक से सुन नहीं पाई।"),
+        # Whole words only: a longer word that starts the same is untouched.
+        ("सेवानिवृत्त", "सेवानिवृत्त"),
+        ("आपका नाम क्या है?", "आपका नाम क्या है?"),
+    ],
+)
+def test_heavy_hindi_becomes_easy_hinglish(reply, expected):
+    from app.ai.conversation import easy_hinglish
+
+    assert easy_hinglish(reply, "hi") == expected
+    assert easy_hinglish(reply, "hi-en") == expected
+
+
+def test_english_replies_are_not_touched_by_hinglish_word_swap():
+    from app.ai.conversation import easy_hinglish
+
+    assert easy_hinglish("कृपया", "en") == "कृपया"
+
+
+def test_hindi_caller_gets_easy_hinglish_directive():
+    from app.ai.prompt_manager import language_instruction
+
+    hindi, hinglish = language_instruction("hi"), language_instruction("hi-en")
+    assert hindi == hinglish
+    assert hindi.startswith("CALL LANGUAGE: Hinglish.")
+
+
+def test_per_call_prompt_parts_come_last_for_prompt_caching():
+    from app.ai.prompt_manager import PromptManager
+
+    prompts = [
+        PromptManager().greeting(
+            "Kinikh Group", "INFO", caller_number=number, current_time=time,
+            language=language, language_locked=True,
+        )
+        for number, time, language in (
+            ("+919876543210", "Monday 10:00", "en"),
+            ("+918888777766", "Tuesday 18:30", "hi"),
+        )
+    ]
+    fixed = prompts[0][: prompts[0].index("# Current call")]
+    # Everything before "Current call" is identical across calls, so OpenAI
+    # can serve it from its prompt cache.
+    assert prompts[1].startswith(fixed)
+    assert "CALL LANGUAGE: " not in fixed and "ending in" not in fixed

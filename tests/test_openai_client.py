@@ -197,9 +197,32 @@ class TestOpenAIClientChat:
             return mock_resp
 
         with patch.object(client._raw.chat.completions, "create", _capture):
-            await client.chat([{"role": "user", "content": "x"}], temperature=0.3)
+            await client.chat(
+                [{"role": "user", "content": "x"}], model="gpt-5.6-luna", temperature=0.3
+            )
 
         assert "temperature" not in captured
+
+    @pytest.mark.asyncio
+    async def test_chat_sends_custom_temperature_to_gpt4_models(self) -> None:
+        """The live-call model (gpt-4.1-mini) accepts a custom temperature;
+        dropping it left replies at the default of 1."""
+        from app.ai.openai_client import OpenAIClient
+
+        client = OpenAIClient()
+        mock_resp = _mock_chat_response("ok")
+        captured: dict = {}
+
+        async def _capture(**kwargs: object) -> object:
+            captured.update(kwargs)
+            return mock_resp
+
+        with patch.object(client._raw.chat.completions, "create", _capture):
+            await client.chat(
+                [{"role": "user", "content": "x"}], model="gpt-4.1-mini", temperature=0.2
+            )
+
+        assert captured["temperature"] == 0.2
 
     @pytest.mark.asyncio
     async def test_chat_sends_temperature_when_already_default(self) -> None:

@@ -43,6 +43,14 @@ def _parse_retry_after(exc: openai.RateLimitError, default: float) -> float:
 # Global persistent AsyncOpenAI client to ensure connection pooling and avoid leaks
 _async_openai_client: AsyncOpenAI | None = None
 _reasoning_effort_supported: dict[str, bool] = {}
+# Non-reasoning chat models that accept a custom temperature. Reasoning
+# models (gpt-5.x, o-series) reject anything but the default of 1.
+_CUSTOM_TEMPERATURE_MODELS = ("gpt-4.", "gpt-4o", "gpt-3.5")
+
+
+def _accepts_temperature(model: str, temperature: float) -> bool:
+    return temperature == 1 or model.startswith(_CUSTOM_TEMPERATURE_MODELS)
+
 
 def _get_async_openai_client() -> AsyncOpenAI:
     global _async_openai_client
@@ -145,13 +153,11 @@ class OpenAIClient:
             "max_completion_tokens": mt,
             "timeout": timeout,
         }
-        # gpt-5.6-luna (the currently configured model) rejects any non-default
-        # temperature outright: HTTP 400 "Unsupported value: 'temperature'
-        # does not support <x> with this model. Only the default (1) value is
-        # supported." Omit the parameter unless it already equals the
-        # default, so the API applies its own default instead of us guessing
-        # which models accept an override.
-        if t == 1:
+        # gpt-5.6-luna rejects any non-default temperature outright: HTTP 400
+        # "Unsupported value: 'temperature' does not support <x> with this
+        # model. Only the default (1) value is supported." GPT-4.x/4o accept
+        # it, and the live-call model needs the configured low temperature.
+        if _accepts_temperature(m, t):
             kwargs["temperature"] = t
         if json_mode:
             kwargs["response_format"] = {"type": "json_object"}
@@ -228,8 +234,11 @@ class OpenAIClient:
             "messages": messages,
             "max_completion_tokens": mt,
             "stream": True,
+            # Final chunk carries token usage, including how much of the
+            # prompt was served from OpenAI's prompt cache (faster first token).
+            "stream_options": {"include_usage": True},
         }
-        if t == 1:  # see chat() — this model rejects any non-default temperature
+        if _accepts_temperature(m, t):  # see chat()
             stream_kwargs["temperature"] = t
         if reasoning_effort and _reasoning_effort_supported.get(m, True):
             stream_kwargs["reasoning_effort"] = reasoning_effort
@@ -247,6 +256,16 @@ class OpenAIClient:
             stream_kwargs.pop("reasoning_effort", None)
             stream = await self._raw.chat.completions.create(**stream_kwargs)
         async for chunk in stream:
+            usage = getattr(chunk, "usage", None)
+            if usage is not None:
+                details = getattr(usage, "prompt_tokens_details", None)
+                cached = getattr(details, "cached_tokens", None) if details else None
+                logger.info(
+                    f"[openai] stream usage model={m} prompt_tokens={usage.prompt_tokens} "
+                    f"cached_tokens={cached or 0}"
+                )
+            if not chunk.choices:
+                continue  # the usage-only final chunk
             delta = chunk.choices[0].delta.content
             if delta:
                 yield delta

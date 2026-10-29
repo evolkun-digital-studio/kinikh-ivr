@@ -299,12 +299,13 @@ def test_hindi_phrases_keep_company_name_placeholder():
     assert "{" not in pm.missed_that("hi") + pm.still_there("hi")
 
 
-def test_greeting_prompt_asks_for_everyday_hindi_and_short_replies():
+def test_greeting_prompt_asks_hindi_callers_for_easy_hinglish_and_short_replies():
     from app.ai.prompt_manager import PromptManager
 
     prompt = PromptManager().greeting(
         "Kinikh Group", "INFO", language="hi", language_locked=True
     )
-    assert "everyday spoken Hindi" in prompt
-    assert "हमारी team आपको जल्दी call back करेगी" in prompt
+    assert "CALL LANGUAGE: Hinglish" in prompt
+    assert "never pure or \"medium\" Hindi" in prompt
+    assert "Sure, आपकी website के लिए हमारी tech team आपको call करेगी।" in prompt
     assert "Reply in one or two short sentences, about 25 words at most" in prompt

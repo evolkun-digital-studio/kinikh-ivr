@@ -24,7 +24,7 @@ from app.prompts.system import INITIAL_GREETING
 from app.telephony.transfer import is_transfer_available
 
 _FALLBACK_EN = "I'm sorry, I'm having trouble right now. Please call back in a moment."
-_FALLBACK_HI = "माफ़ कीजिए, अभी थोड़ी दिक्कत आ रही है। थोड़ी देर बाद कॉल कीजिए।"
+_FALLBACK_HI = "Sorry, अभी थोड़ा technical issue आ रहा है। Please थोड़ी देर बाद call कीजिए।"
 _FALLBACK_HI_EN = "Sorry, अभी कुछ technical issue है। Please थोड़ी देर बाद call कीजिए।"
 
 # Flush the first useful clause as soon as its punctuation arrives. Waiting
@@ -71,6 +71,100 @@ def soften_acknowledgement(text: str, language: str) -> str:
     if language in ("hi", "hi-en"):
         return "जी, ज़रूर।" + (" " + rest if rest else "")
     return rest[:1].upper() + rest[1:] if rest else "Of course."
+
+
+# Heavy ("medium"/formal) Hindi words and the easy word a Hinglish-speaking
+# receptionist would use instead. Longest phrases first; whole words only.
+_EASY_HINGLISH = (
+    ("माफ़ कीजिए", "sorry"), ("माफ कीजिए", "sorry"), ("क्षमा कीजिए", "sorry"),
+    ("एक पल", "one second"), ("के अनुसार", "के हिसाब से"),
+    ("कृपया", "please"), ("धन्यवाद", "thank you"), ("शुक्रिया", "thank you"),
+    ("आवश्यकता", "requirement"), ("आवश्यकताओं", "requirements"),
+    ("ज़रूरत", "requirement"), ("जरूरत", "requirement"),
+    ("जानकारी", "details"), ("सूचना", "information"), ("विवरण", "details"),
+    ("सहायता", "help"), ("मदद", "help"),
+    ("संपर्क", "contact"), ("सम्पर्क", "contact"),
+    ("उपलब्ध", "available"), ("पुष्टि", "confirm"),
+    ("प्रतीक्षा", "wait"), ("इंतज़ार", "wait"), ("इंतजार", "wait"),
+    ("समस्या", "problem"), ("दिक्कत", "problem"),
+    ("विभाग", "department"), ("निर्माण", "construction"),
+    ("सेवाएँ", "services"), ("सेवाएं", "services"), ("सेवाओं", "services"), ("सेवा", "service"),
+    ("स्थान", "location"), ("दिनांक", "date"),
+    ("शुल्क", "charges"), ("मूल्य", "price"), ("कीमत", "price"),
+    ("कार्यालय", "office"), ("दफ़्तर", "office"), ("दफ्तर", "office"),
+    ("ग्राहक", "customer"), ("व्यवसाय", "business"), ("अनुरोध", "request"),
+    ("प्रक्रिया", "process"), ("तुरंत", "right away"), ("शीघ्र", "जल्दी"),
+)
+# A letter of an English or Devanagari word \u2014 but not the danda (\u0964, \u0965).
+_DEVANAGARI_WORD = r"[\w\u0900-\u0963\u0966-\u097F]"
+_EASY_HINGLISH_RE = [
+    (re.compile(rf"(?<!{_DEVANAGARI_WORD}){re.escape(heavy)}(?!{_DEVANAGARI_WORD})"), easy)
+    for heavy, easy in sorted(_EASY_HINGLISH, key=lambda pair: len(pair[0]), reverse=True)
+]
+
+
+def easy_hinglish(text: str, language: str) -> str:
+    """Swap heavy Hindi words for the easy English/Hindi word a modern
+    receptionist uses. Only for hi / hi-en replies."""
+    if language not in ("hi", "hi-en"):
+        return text
+    for pattern, easy in _EASY_HINGLISH_RE:
+        text = pattern.sub(easy, text)
+    if text[:1].isascii() and text[:1].islower():
+        text = text[0].upper() + text[1:]
+    return text
+
+
+# Familiar forms of address a front-desk receptionist never uses; the
+# caller is "sir" or "madam". Kinship words ("bhaiya", "didi") are replaced
+# only when they address the caller — at the start of the reply or set off
+# by a comma — so "आपके भाई के लिए" (the caller's brother) is left alone.
+_JI = r"(?:\s*(?:ji|जी))?"
+_MALE_KIN = (
+    r"(?:bhai\s*sa(?:hab|ab|hb)|bhaisaab|bhaiyya|bhaiyaa|bhaiya|bhai|"
+    r"भाई\s*साहब|भाईसाहब|भैया|भइया|भाई)" + _JI
+)
+_FEMALE_KIN = r"(?:didi|behen\s*ji|behenji|दीदी|बहन\s*जी|बहनजी)" + _JI
+_NOT_WORD = _DEVANAGARI_WORD
+_SLANG_SIR = re.compile(rf"(?<!{_NOT_WORD})(?:boss|bro|buddy|dude)(?!{_NOT_WORD})", re.IGNORECASE)
+_SLANG_DROP = re.compile(
+    rf"(?:,\s*)?(?<!{_NOT_WORD})(?:yaar|yar|dost|यार|दोस्त)(?!{_NOT_WORD})(?:\s*,)?",
+    re.IGNORECASE,
+)
+_ADDRESS_TERMS = ((_MALE_KIN, "sir"), (_FEMALE_KIN, "madam"))
+_LEADING = [
+    (re.compile(rf"^(\s*){kin}(?=\s*[,।.!?])", re.IGNORECASE), title)
+    for kin, title in _ADDRESS_TERMS
+]
+# ", bhaiya." or right after an acknowledgement: "जी दीदी,", "Thank you bhai."
+_AFTER = r"(,\s*|(?:^|\s)(?:ji|jee|ok|okay|sure|thank you|thanks|जी|धन्यवाद|शुक्रिया)\s+)"
+_VOCATIVE = [
+    (re.compile(rf"{_AFTER}{kin}(?=\s*(?:[,।.!?]|$))", re.IGNORECASE), title)
+    for kin, title in _ADDRESS_TERMS
+]
+
+
+def professional_address(text: str) -> str:
+    """Replace familiar/slang address terms with "sir"/"madam" (or drop
+    "yaar"-type fillers) so every reply stays professional."""
+    cleaned = text
+    for pattern, title in _LEADING:
+        cleaned = pattern.sub(lambda m, t=title: m.group(1) + t.capitalize(), cleaned)
+    for pattern, title in _VOCATIVE:
+        cleaned = pattern.sub(lambda m, t=title: m.group(1) + t, cleaned)
+    cleaned = _SLANG_SIR.sub("sir", cleaned)
+    cleaned = _SLANG_DROP.sub(
+        lambda m: "," if m.group(0).rstrip().endswith(",") else "", cleaned
+    )
+    if cleaned == text:
+        return text
+    cleaned = re.sub(r"\s+([,।.!?])", r"\1", cleaned)
+    cleaned = re.sub(r"^[\s,]+", "", re.sub(r"\s{2,}", " ", cleaned)).strip()
+    if not any(c.isalnum() for c in cleaned):
+        return text
+    if cleaned[0].isascii():
+        cleaned = cleaned[0].upper() + cleaned[1:]
+    return cleaned
 
 
 # Acknowledgement openers recognised even without punctuation after them
@@ -340,6 +434,10 @@ class ConversationEngine:
         )
         try:
             async for segment in self._reply_segments(context, messages, first_token_timeout):
+                professional = professional_address(easy_hinglish(segment, context.reply_language))
+                if professional != segment:
+                    log_call_event("ai.reply.casual_address_replaced", call_sid=context.call_sid)
+                    segment = professional
                 if yielded_chars == 0:
                     segment = soften_acknowledgement(segment, context.reply_language)
                     guarded = strip_repeated_opener(segment, previous_reply)

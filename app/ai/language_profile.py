@@ -387,6 +387,10 @@ def update_language_profile(
         # Not set yet ("hello", "haan ji"): answer in whatever this turn
         # shows, if anything, without fixing it for the call.
         response = analysis.language
+    if response == HI and not ctx.language_explicit:
+        # Pure Hindi sounds too heavy for a business call; Hindi callers get
+        # the Hinglish style unless they explicitly asked for Hindi.
+        response = HINGLISH
     ctx.response_language = response
     return LanguageDecision(
         response_language=response,

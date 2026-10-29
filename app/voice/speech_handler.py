@@ -175,8 +175,8 @@ _GREETING_AUDIO_CACHE: dict[tuple[str, str], list[bytes]] = {}
 # prepared (see SpeechHandler._maybe_play_filler). Each at most once a call.
 _FILLER_TEXTS: dict[str, tuple[str, ...]] = {
     "en": ("Okay.", "Sure.", "Right."),
-    "hi": ("जी, ज़रूर।", "बिल्कुल।", "जी।"),
-    "hi-en": ("जी, ज़रूर।", "बिल्कुल।", "जी।"),
+    "hi": ("जी, sure।", "Okay।", "Sure।"),
+    "hi-en": ("जी, sure।", "Okay।", "Sure।"),
 }
 _FILLER_AUDIO_CACHE: dict[tuple[str, str], list[bytes]] = {}
 _FILLER_DELAY_S = 1.5

@@ -54,17 +54,16 @@ _LANGUAGE_DIRECTIVES = {
         "Do not use any Hindi in this reply, including Ji, Haanji or Achha. "
         "Use English for acknowledgements, apologies and the closing too."
     ),
-    "hi": (
-        "Speak everyday spoken Hindi. Write every Hindi word in Devanagari script and keep "
-        "common English words (website, booking, team, construction, project, call, number, "
-        "email) in English letters. Do not switch to English sentences, greetings, apologies "
-        "or closing lines. Keep the whole conversation in Hindi sentence structure."
-    ),
     "hi-en": (
-        "Speak natural conversational Hinglish, the relaxed Hindi-English mix people use on "
-        "the phone in India. Write the Hindi words in Devanagari script and the English "
-        "words in English letters, e.g. \"जी, आपकी website के लिए हमारी tech team आपको "
-        "call करेगी।\""
+        "Speak natural, English-heavy Hinglish, the way urban Indian professionals talk on a "
+        "business call: Hindi only for the grammar and small linking words (है, के लिए, "
+        "आपका, कर सकती हूँ), English for nouns, service words, most verbs and every "
+        "acknowledgement (sure, okay, perfect, no problem, thank you). Never use a pure "
+        "Hindi word where a common English one exists: details not जानकारी, requirement "
+        "not ज़रूरत, help not मदद, location not जगह, available not उपलब्ध, confirm not "
+        "पक्का. Write the Hindi words in Devanagari script and the English words in English "
+        "letters, e.g. \"Sure, आपकी website के लिए हमारी tech team आपको call करेगी।\" or "
+        "\"Perfect, आपका project किस location पर है?\""
     ),
 }
 _UNKNOWN_LANGUAGE_DIRECTIVE = (
@@ -74,11 +73,17 @@ _UNKNOWN_LANGUAGE_DIRECTIVE = (
 )
 
 
+# Hindi-speaking callers are answered in the same easy Hinglish as Hinglish
+# callers: pure or "medium" Hindi sounds stiff on a business call.
+_LANGUAGE_DIRECTIVES["hi"] = _LANGUAGE_DIRECTIVES["hi-en"]
+_REPLY_LANGUAGE_NAMES = {**LANGUAGE_NAMES, "hi": LANGUAGE_NAMES["hi-en"]}
+
+
 def language_instruction(call_language: str) -> str:
     if call_language not in LANGUAGE_NAMES:
         return _UNKNOWN_LANGUAGE_DIRECTIVE
     return (
-        f"CALL LANGUAGE: {LANGUAGE_NAMES[call_language]}. Reply only in this language.\n"
+        f"CALL LANGUAGE: {_REPLY_LANGUAGE_NAMES[call_language]}. Reply only in this language.\n"
         f"{_LANGUAGE_DIRECTIVES[call_language]}"
     )
 

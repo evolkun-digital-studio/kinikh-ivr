@@ -928,7 +928,7 @@ class TestConversationEngine:
         ctx = self._make_context("hi")
         ctx.language_locked = True
         prompt = await engine._build_system_prompt(ctx)
-        assert "CALL LANGUAGE: Hindi. Reply only in this language." in prompt
+        assert "CALL LANGUAGE: Hinglish. Reply only in this language." in prompt
 
     @pytest.mark.asyncio
     async def test_build_system_prompt_hinglish_adds_instruction(self):
@@ -952,7 +952,7 @@ class TestConversationEngine:
         ctx = self._make_context("hi")
         ctx.language_locked = True
         prompt = await engine._build_system_prompt(ctx)
-        assert "CALL LANGUAGE: Hindi. Reply only in this language." in prompt
+        assert "CALL LANGUAGE: Hinglish. Reply only in this language." in prompt
 
     @pytest.mark.asyncio
     async def test_build_system_prompt_hi_preserves_department_names(self):

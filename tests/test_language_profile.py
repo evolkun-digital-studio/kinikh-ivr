@@ -113,8 +113,15 @@ def test_1_first_meaningful_english_turn_selects_english():
 
 def test_2_first_meaningful_hindi_turn_selects_hindi():
     ctx = _ctx()
-    assert _turn(ctx, "Mujhe aapki sevaon ke baare mein jankari chahiye.") == HI
-    assert ctx.primary_language == HI
+    # Hindi is detected for the call, but replies use the lighter Hinglish style.
+    assert _turn(ctx, "Mujhe aapki sevaon ke baare mein jankari chahiye.") == HINGLISH
+    assert ctx.primary_language == HI and ctx.language == HI
+
+
+def test_explicit_hindi_request_gets_pure_hindi_replies():
+    ctx = _ctx()
+    _turn(ctx, "I want to know about architecture services.")
+    assert _turn(ctx, "Hindi mein baat karo") == HI
 
 
 def test_3_first_mixed_turn_selects_hinglish():
@@ -144,9 +151,10 @@ def test_4_yes_does_not_switch_hinglish_conversation_to_english():
 def test_5_okay_does_not_switch_language():
     # TEST B
     ctx = _ctx()
-    assert _turn(ctx, "Mujhe ghar banwana hai.") == HI
-    assert _turn(ctx, "Interior design bhi karte ho?") == HI
-    assert _turn(ctx, "okay") == HI
+    assert _turn(ctx, "Mujhe ghar banwana hai.") == HINGLISH
+    assert _turn(ctx, "Interior design bhi karte ho?") == HINGLISH
+    assert _turn(ctx, "okay") == HINGLISH
+    assert ctx.language == HI
 
 
 def test_6_haan_does_not_switch_english_conversation_to_hindi():
@@ -172,7 +180,7 @@ def test_7_ji_does_not_switch_english_conversation_to_hindi():
 def test_8_full_hindi_turn_during_english_call_gets_hindi_response():
     ctx = _ctx()
     _turn(ctx, "I want to know about architecture.")
-    assert _turn(ctx, "मुझे अपना घर बनवाना है, कितना खर्चा आएगा?") == HI
+    assert _turn(ctx, "मुझे अपना घर बनवाना है, कितना खर्चा आएगा?") == HINGLISH
     assert ctx.language == HI  # Clear Hindi switches the whole reply and call.
 
 
@@ -333,7 +341,7 @@ async def test_16_english_rag_context_with_hindi_response_language():
     _turn(ctx, "मुझे बताइए construction services क्या देते हैं आप लोग")
     _turn(ctx, "मुझे घर बनवाना है, कितना खर्चा आएगा?")
     prompt = await _system_prompt(ctx)
-    assert "CALL LANGUAGE: Hindi" in prompt
+    assert "CALL LANGUAGE: Hinglish" in prompt
     assert _ENGLISH_FACT in prompt
     assert "Never reply in English just because the facts are in English." in prompt
 
@@ -347,7 +355,7 @@ async def test_17_english_rag_context_with_hinglish_response_language():
     assert ctx.primary_language == EN
     assert "CALL LANGUAGE: Hinglish" in prompt
     assert _ENGLISH_FACT in prompt
-    assert "Speak natural conversational Hinglish" in prompt
+    assert "Speak natural, English-heavy Hinglish" in prompt
 
 
 @pytest.mark.asyncio
@@ -360,11 +368,11 @@ async def test_18_facts_identical_across_response_languages():
     ):
         ctx = _ctx()
         _turn(ctx, first_turn)
-        prompts[ctx.response_language] = await _system_prompt(ctx)
+        prompts[ctx.language] = await _system_prompt(ctx)
     assert set(prompts) == {EN, HI, HINGLISH}
 
     def _facts(prompt: str) -> str:
-        return prompt[prompt.index("# Company information"):].split("\n\nFINAL SPOKEN LANGUAGE:")[0]
+        return prompt[prompt.index("# Company information"):].split("\n\n# How to speak")[0]
 
     # The company facts and RAG text reach the model byte-for-byte the same,
     # whatever the language; only the language directive differs.

@@ -26,8 +26,9 @@ def test_commas_do_not_split_a_spoken_sentence_into_separate_tts_requests():
 
 
 def test_hindi_fillers_are_warm_and_do_not_use_acha():
+    assert _FILLER_TEXTS["hi"][0] == "जी, sure।"
+    assert _FILLER_TEXTS["hi-en"][0] == "जी, sure।"
     for language in ("hi", "hi-en"):
-        assert _FILLER_TEXTS[language][0] == "जी, ज़रूर।"
         assert all("अच्छा" not in text and "एक पल" not in text for text in _FILLER_TEXTS[language])
 
 
@@ -120,7 +121,8 @@ async def test_language_rule_is_the_last_instruction_even_after_rag(language):
         (
             "hi",
             "अच्छा, आपकी website की जानकारी बता दीजिए।",
-            "जी, ज़रूर। आपकी website की जानकारी बता दीजिए।",
+            # जानकारी is heavy Hindi; easy Hinglish says "details".
+            "जी, ज़रूर। आपकी website की details बता दीजिए।",
         ),
         ("en", "Achha, our team can help with that.", "Our team can help with that."),
         ("hi", "अच्छा काम करने के लिए हमारी team है।", "अच्छा काम करने के लिए हमारी team है।"),
